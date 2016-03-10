@@ -15,4 +15,4 @@ struct ex_mem_state {
 
 extern struct ex_mem_state ex_mem_state;
 
-void execute(void);
+void ex_stage(void);

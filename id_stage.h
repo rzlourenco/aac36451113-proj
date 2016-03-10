@@ -17,4 +17,4 @@ struct id_ex_state {
 
 extern struct id_ex_state id_ex_state;
 
-void instruction_decode(void);
+void id_stage(void);

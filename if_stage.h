@@ -9,4 +9,4 @@ struct if_id_state {
 
 extern struct if_id_state if_id_state;
 
-void instruction_fetch(void);
+void if_stage(void);

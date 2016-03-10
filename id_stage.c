@@ -6,7 +6,7 @@
 
 struct id_ex_state id_ex_state;
 
-void instruction_decode(void) {
+void id_stage(void) {
     uint32_t bits = instruction_val(if_id_state.instruction);
     int opcode = BITS(bits, 26, 32);
     int rd = BITS(bits, 21, 26);
@@ -17,56 +17,67 @@ void instruction_decode(void) {
 
     switch (opcode) {
         /* Arithmetic, logic, and shift */
-        case 0b000000: // ADD
-        case 0b000010: // ADDC
-        case 0b000100: // ADDK
-        case 0b000110: // ADDCK
-        case 0b001000: // ADDI
-        case 0b001010: // ADDIC
-        case 0b001100: // ADDIK
-        case 0b001110: // ADDIKC
-        case 0b000001: // RSUB
-        case 0b000011: // RSUBC
-        case 0b000101: // RSUBK, CMP, CMPU
-        case 0b000111: // RSUBKC
-        case 0b001001: // RSUBI
-        case 0b001011: // RSUBIC
-        case 0b001101: // RSUBIK
-        case 0b001111: // RSUBIKC
-        case 0b010000: // MUL, MULH, MULHU, MULHSU
+        case 0x00: // ADD
+        case 0x01: // RSUB
+        case 0x02: // ADDC
+        case 0x03: // RSUBC
+        case 0x04: // ADDK
+        case 0x05: // RSUBK, CMP, CMPU
+        case 0x06: // ADDCK
+        case 0x07: // RSUBKC
 
-        case 0b010001: // BSRA,  BSLA,  BSRL,  BSLL
-        case 0b011001: // BSRAI, BSLAI, BSRLI, BSLLI
-        case 0b100100: // SRA, SRC, SRL, SEXT8, SEXT16
+        case 0x08: // ADDI
+        case 0x09: // RSUBI
+        case 0x0A: // ADDIC
+        case 0x0B: // RSUBIC
+        case 0x0C: // ADDIK
+        case 0x0D: // RSUBIK
+        case 0x0E: // ADDIKC
+        case 0x0F: // RSUBIKC
 
-        case 0b100000: // OR
-        case 0b101000: // ORI
-        case 0b100001: // AND
-        case 0b101001: // ANDI
-        case 0b100010: // XOR
-        case 0b101010: // XORI
-        case 0b100011: // ANDN
-        case 0b101011: // ANDNI
-        case 0b101100: // IMM
+        case 0x10: // MUL, MULH, MULHU, MULHSU
 
-        case 0b110000: // LBU
-        case 0b111000: // LBUI
-        case 0b110001: // LHU
-        case 0b111001: // LHUI
-        case 0b110010: // LW
-        case 0b111010: // LWI
-        case 0b110100: // SB
-        case 0b111100: // SBI
-        case 0b110101: // SH
-        case 0b111101: // SHI
-        case 0b110110: // SW
-        case 0b111110: // SWI
+        case 0x11: // BSRA,  BSLA,  BSRL,  BSLL
+        case 0x19: // BSRAI, BSLAI, BSRLI, BSLLI
 
-        case 0b100110: // BR, BRL, BRA, BRAL, BRD, BRLD, BRAD, BRALD
-        case 0b101110: // BRI, BRLI, BRAI, BRALI, BRID, BRLID, BRAID, BRALID
-        case 0b100111: // BEQ, BNE, BLT, BLE, BGT, BGE, BEQD, BNED, BLTD, BLED, BGTD, BGED
-        case 0b101111: // BEQI, BNEI, BLTI, BLEI, BGTI, BGEI, BEQID, BNEID, BGTID, BGEID
-        case 0b101101: // RTSD
+        case 0x24: // SRA, SRC, SRL, SEXT8, SEXT16
+
+        case 0x20: // OR
+        case 0x21: // AND
+        case 0x22: // XOR
+        case 0x23: // ANDN
+
+        case 0x28: // ORI
+        case 0x29: // ANDI
+        case 0x2A: // XORI
+        case 0x2B: // ANDNI
+
+        case 0x2C: // IMM
+
+        case 0x30: // LBU
+        case 0x31: // LHU
+        case 0x32: // LW
+
+        case 0x34: // SB
+        case 0x35: // SH
+        case 0x36: // SW
+
+        case 0x38: // LBUI
+        case 0x39: // LHUI
+        case 0x3A: // LWI
+
+        case 0x3C: // SBI
+        case 0x3D: // SHI
+        case 0x3E: // SWI
+
+        case 0x26: // BR, BRL, BRA, BRAL, BRD, BRLD, BRAD, BRALD
+        case 0x27: // BEQ, BNE, BLT, BLE, BGT, BGE, BEQD, BNED, BLTD, BLED, BGTD, BGED
+
+        case 0x2E: // BRI, BRLI, BRAI, BRALI, BRID, BRLID, BRAID, BRALID
+        case 0x2F: // BEQI, BNEI, BLTI, BLEI, BGTI, BGEI, BEQID, BNEID, BGTID, BGEID
+
+        case 0x2D: // RTSD
+
             break;
 
         default:
