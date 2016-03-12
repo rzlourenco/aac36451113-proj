@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.3)
 project(aac_proj)
 
-set(CMAKE_C_FLAGS       "${CMAKE_C_FLAGS} -Wall -Wextra --std=c11 --pedantic-errors")
+set(CMAKE_C_FLAGS       "${CMAKE_C_FLAGS} -Wall -Wextra --std=gnu11 --pedantic-errors")
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -ggdb -fsanitize=address")
 
 set(INCLUDE_FILES

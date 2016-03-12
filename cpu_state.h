@@ -1,7 +1,7 @@
 #pragma once
 
 #include "common.h"
-#include <stddef.h>s
+#include <stddef.h>
 
 struct cpu_state {
     address_t pc;
