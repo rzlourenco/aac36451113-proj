@@ -8,11 +8,11 @@
 
 #include <string.h>
 
-struct cpu_state cpu_state;
+struct cpu_state_t cpu_state;
+struct msr_t msr;
 
 void init_cpu(void) {
     cpu_state.pc = make_address(0);
-    cpu_state.halt = 0;
 
     cpu_state.if_enable = 1;
     cpu_state.id_enable = 1;
@@ -22,6 +22,9 @@ void init_cpu(void) {
 
     cpu_state.total_cycles = 0;
     cpu_state.total_instructions = 0;
+
+    msr.c = 0;
+    msr.i = 0;
 
     memset(&if_id_state, 0, sizeof(if_id_state));
     memset(&id_ex_state, 0, sizeof(id_ex_state));

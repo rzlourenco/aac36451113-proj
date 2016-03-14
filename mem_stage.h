@@ -2,7 +2,7 @@
 
 #include "common.h"
 
-struct mem_wb_state {
+struct mem_wb_state_t {
     address_t next_pc;
     word_t data_out;
     word_t s;
@@ -11,6 +11,6 @@ struct mem_wb_state {
     int dest_address;
 };
 
-extern struct mem_wb_state mem_wb_state;
+extern struct mem_wb_state_t mem_wb_state;
 
 void mem_stage(void);

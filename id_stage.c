@@ -1,13 +1,17 @@
 #include "if_stage.h"
 #include "id_stage.h"
+#include "reg_file.h"
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-struct id_ex_state id_ex_state;
+#define ASSERT_OR_ILLEGAL(COND) do { if (!(COND)) goto illegal_instruction; } while (0)
+
+struct id_ex_state_t id_ex_state;
 
 void id_stage(void) {
-    uint32_t bits = instruction_val(if_id_state.instruction);
+    int32_t bits = if_id_state.instruction;
     int opcode = BITS(bits, 26, 32);
     int rd = BITS(bits, 21, 26);
     int ra = BITS(bits, 16, 21);
@@ -16,23 +20,50 @@ void id_stage(void) {
     int imm5 = BITS(bits, 0, 5);
 
     switch (opcode) {
-        /* Arithmetic, logic, and shift */
-        case 0x00: // ADD
-        case 0x01: // RSUB
-        case 0x02: // ADDC
-        case 0x03: // RSUBC
-        case 0x04: // ADDK
-        case 0x05: // RSUBK, CMP, CMPU
-        case 0x06: // ADDCK
-        case 0x07: // RSUBKC
+        case 0x00:
+        case 0x02:
+        case 0x04:
+        case 0x06:
+            // ADD, ADDC, ADDK, ADDKC
+            ASSERT_OR_ILLEGAL(BITS(bits, 0, 11) == 0);
+
+            int c = (opcode & 0x02) != 0;
+            int k = (opcode & 0x04) != 0;
+
+            printf("ADD%c%c\tr%02d,r%02d,r%02d\n", k ? 'K' : ' ', c ? 'C' : ' ', rd, ra, rb);
+            break;
+
+        case 0x01:
+            // RSUB
+            ASSERT_OR_ILLEGAL(BITS(bits, 0, 11) == 0);
+            printf("RSUB\tr%d, r%d, r%d\n", rd, ra, rb);
+            break;
+
+        case 0x03:
+            // RSUBC
+            ASSERT_OR_ILLEGAL(BITS(bits, 0, 11) == 0);
+            printf("RSUBC\tr%d, r%d, r%d\n", rd, ra, rb);
+            break;
+
+        case 0x05:
+            // RSUBK, CMP, CMPU
+            printf("ADDC r%d, r%d, r%d\n", rd, ra, rb);
+            break;
+
+        case 0x07:
+            // RSUBKC
+            ASSERT_OR_ILLEGAL(BITS(bits, 0, 11) == 0);
+            printf("RSUBCK\tr%d, r%d, r%d\n", rd, ra, rb);
+            break;
 
         case 0x08: // ADDI
-        case 0x09: // RSUBI
         case 0x0A: // ADDIC
-        case 0x0B: // RSUBIC
         case 0x0C: // ADDIK
-        case 0x0D: // RSUBIK
         case 0x0E: // ADDIKC
+
+        case 0x09: // RSUBI
+        case 0x0B: // RSUBIC
+        case 0x0D: // RSUBIK
         case 0x0F: // RSUBIKC
 
         case 0x10: // MUL, MULH, MULHU, MULHSU
@@ -77,11 +108,16 @@ void id_stage(void) {
         case 0x2F: // BEQI, BNEI, BLTI, BLEI, BGTI, BGEI, BEQID, BNEID, BGTID, BGEID
 
         case 0x2D: // RTSD
-
+            fprintf(stderr, "Unimplemented instruction (opcode %d, instr 0x%08x)\n", opcode, bits);
             break;
 
         default:
-            fprintf(stderr, "Invalid instruction (opcode %d)\n", opcode);
-            abort();
+            goto illegal_instruction;
     };
+
+    return;
+
+illegal_instruction:
+    fprintf(stderr, "Illegal instruction (opcode %d, instr 0x%08x)\n", opcode, bits);
+    abort();
 }

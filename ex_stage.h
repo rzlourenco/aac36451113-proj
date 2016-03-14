@@ -2,7 +2,7 @@
 
 #include "common.h"
 
-struct ex_mem_state {
+struct ex_mem_state_t {
     address_t next_pc;
     int cond;
     word_t a;
@@ -13,6 +13,14 @@ struct ex_mem_state {
     int dest_address;
 };
 
-extern struct ex_mem_state ex_mem_state;
+enum alu_ops {
+    ALU_ADD  = 0,
+    ALU_SUB  = 1,
+    ALU_ADDC = 2,
+    ALU_SUBC = 3,
+    ALU_MUL  = 4,
+};
+
+extern struct ex_mem_state_t ex_mem_state;
 
 void ex_stage(void);

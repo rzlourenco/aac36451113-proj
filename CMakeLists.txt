@@ -1,8 +1,15 @@
 cmake_minimum_required(VERSION 3.3)
 project(aac_proj)
 
-set(CMAKE_C_FLAGS       "${CMAKE_C_FLAGS} -Wall -Wextra --std=gnu11 --pedantic-errors")
-set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -ggdb -fsanitize=address")
+option(USE_CLANG "Use Clang to compile" ON)
+
+if (USE_CLANG)
+    set(CMAKE_C_COMPILER   "clang")
+    set(CMAKE_CXX_COMPILER "clang++")
+endif(USE_CLANG)
+
+set(CMAKE_C_FLAGS       "${CMAKE_C_FLAGS}       -Wall -Wextra --std=c11 --pedantic-errors")
+set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -ggdb -fsanitize=address,integer,undefined")
 
 set(INCLUDE_FILES
         common.h
@@ -21,6 +28,7 @@ set(INCLUDE_FILES
 
 set(SOURCE_FILES
         main.c
+        utils.c
 
         cpu_state.c
         memory.c

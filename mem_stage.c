@@ -2,7 +2,7 @@
 #include "mem_stage.h"
 #include "memory.h"
 
-struct mem_wb_state mem_wb_state;
+struct mem_wb_state_t mem_wb_state;
 
 void mem_stage(void) {
     word_t opa, opb;
@@ -14,11 +14,11 @@ void mem_stage(void) {
     mem_wb_state.write_enabled = ex_mem_state.write_enabled;
     mem_wb_state.dest_address = ex_mem_state.dest_address;
 
-    // XXX: can we read and write at the same time?
-    word_t word = memory(ex_mem_state.a,
-                         make_address(ex_mem_state.s),
-                         ex_mem_state.mem_write);
     if (!ex_mem_state.mem_write) {
-        mem_wb_state.data_out = word;
+        mem_wb_state.data_out = memory_read(ex_mem_state.s);
+    } else {
+        memory_write(ex_mem_state.s,
+                     ex_mem_state.a,
+                     ex_mem_state.mem_write);
     }
 }

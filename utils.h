@@ -1,6 +1,7 @@
 #pragma once
 
-#define BITS(V, LOW, HIGH) (((V)>>((HIGH)-(LOW)))&((1<<((HIGH)-(LOW)))-1))
+#define BITS(VALUE, LOW, HIGH) (((VALUE)>>((HIGH)-(LOW)))&((1<<((HIGH)-(LOW)))-1))
+#define ARRAY_LENGTH(ARRAY) (sizeof(ARRAY)/sizeof((ARRAY)[0]))
 
 #ifdef NDEBUG
 
@@ -29,5 +30,11 @@ static inline TAG##_t make_##TAG(REPR v) {\
 static inline REPR TAG##_val(TAG##_t v) {\
     return v.val;\
 }
+
+#endif
+
+#ifndef _POSIX_VERSION
+
+char *strdup(char const *s);
 
 #endif

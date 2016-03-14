@@ -1,13 +1,12 @@
 #pragma once
 
 #include "utils.h"
+
 #include <stdint.h>
 
 typedef int32_t word_t;
-typedef uint32_t uword_t;
-typedef int16_t hword_t;
-typedef uint16_t uhword_t;
+typedef int32_t instruction_t;
+typedef int32_t address_t;
 
-NEWTYPE(instruction, word_t)
-
-NEWTYPE(address, word_t)
+#define WORD_MAX INT32_MAX
+#define WORD_MIN INT32_MIN

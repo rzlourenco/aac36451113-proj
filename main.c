@@ -1,5 +1,6 @@
 #include "cpu_state.h"
 #include "memory.h"
+#include "utils.h"
 
 #include <assert.h>
 #include <errno.h>
@@ -29,6 +30,8 @@ int main(int argc, char **argv) {
                 break;
             case 'r':
                 rom_file = strdup(optarg);
+                fprintf(stderr, "%s\n", optarg);
+                fprintf(stderr, "%s\n", rom_file);
                 break;
             default:
                 usage(argv[0]);
@@ -50,8 +53,10 @@ int main(int argc, char **argv) {
         exit(2);
     }
 
+    free(rom_file);
+
     struct stat rom_stat;
-    if (stat(rom_file, &rom_stat) < 0) {
+    if (fstat(rom_fd, &rom_stat) < 0) {
         perror("stat");
         exit(2);
     }
@@ -70,18 +75,19 @@ int main(int argc, char **argv) {
 
     init_cpu();
     init_memory(mem_bits);
-    flash_memory(make_address(0), (word_t const *)rom, rom_stat.st_size / sizeof(word_t));
-
-    while (!cpu_state.halt) {
-        clock();
-    }
+    flash_memory(make_address(0), rom, rom_stat.st_size / sizeof(word_t));
 
     if (munmap(rom, rom_stat.st_blksize) < 0) {
         perror("munmap");
         exit(2);
     }
 
-    free(rom_file);
+    while (1) {
+        clock();
+    }
+
+    fprintf(stderr, "Total cycles: %zd\n", cpu_state.total_cycles);
+    fprintf(stderr, "Total instructions: %zd\n", cpu_state.total_instructions);
 
     return 0;
 }

@@ -2,21 +2,18 @@
 
 #include <assert.h>
 
-static word_t registers[32] = { 0 };
+static word_t registers[32] = { { 0 } };
 
-void reg_file(address_t aa, word_t *a,
-              address_t ba, word_t *b,
-              address_t da, word_t d,
-              int write_enabled) {
-    assert(address_val(aa) < sizeof(registers));
-    assert(address_val(ba) < sizeof(registers));
-    assert(address_val(da) < sizeof(registers));
+word_t reg_file_read(address_t address) {
+    assert(address < ARRAY_LENGTH(registers));
 
-    *a = registers[address_val(aa)];
-    *b = registers[address_val(ba)];
+    return registers[address];
+}
 
-    // R0 is always 0
-    if (write_enabled && address_val(da) != 0) {
-        registers[address_val(da)] = d;
+void reg_file_write(address_t address, word_t data, int write_enable) {
+    assert(address < ARRAY_LENGTH(registers));
+
+    if (write_enable && address != 0) {
+        registers[address] = data;
     }
 }
