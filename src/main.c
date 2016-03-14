@@ -19,6 +19,9 @@ void usage(char const *argv0) {
 }
 
 int main(int argc, char **argv) {
+    assert(sizeof(struct msr_t) == sizeof(int32_t));
+
+
     int opt;
     size_t mem_bits = 16;
     char *rom_file = NULL;
@@ -30,8 +33,6 @@ int main(int argc, char **argv) {
                 break;
             case 'r':
                 rom_file = strdup(optarg);
-                fprintf(stderr, "%s\n", optarg);
-                fprintf(stderr, "%s\n", rom_file);
                 break;
             default:
                 usage(argv[0]);
@@ -75,19 +76,16 @@ int main(int argc, char **argv) {
 
     init_cpu();
     init_memory(mem_bits);
-    flash_memory(make_address(0), rom, rom_stat.st_size / sizeof(word_t));
+    flash_memory(0, rom, rom_stat.st_size);
 
     if (munmap(rom, rom_stat.st_blksize) < 0) {
         perror("munmap");
         exit(2);
     }
 
-    while (1) {
+    while (!cpu_halt()) {
         clock();
     }
-
-    fprintf(stderr, "Total cycles: %zd\n", cpu_state.total_cycles);
-    fprintf(stderr, "Total instructions: %zd\n", cpu_state.total_instructions);
 
     return 0;
 }

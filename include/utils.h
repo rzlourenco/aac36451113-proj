@@ -1,6 +1,8 @@
 #pragma once
 
-#define BITS(VALUE, LOW, HIGH) (((VALUE)>>((HIGH)-(LOW)))&((1<<((HIGH)-(LOW)))-1))
+#define BITS(VALUE, LOW, HIGH) (((VALUE)>>(LOW))&((1u<<((HIGH)-(LOW)+1u))-1u))
+#include <stdio.h>
+
 #define ARRAY_LENGTH(ARRAY) (sizeof(ARRAY)/sizeof((ARRAY)[0]))
 
 #ifdef NDEBUG
@@ -38,3 +40,11 @@ static inline REPR TAG##_val(TAG##_t v) {\
 char *strdup(char const *s);
 
 #endif
+
+#ifdef DEBUG
+#define dprintf printf
+#else
+#define dprintf(...)
+#endif
+
+int log2i(int value);

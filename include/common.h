@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 typedef int32_t word_t;
+typedef uint32_t uword_t;
 typedef int32_t instruction_t;
 typedef int32_t address_t;
 
