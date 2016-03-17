@@ -42,7 +42,7 @@ char *strdup(char const *s);
 #endif
 
 #ifdef DEBUG
-#define dprintf printf
+#define dprintf(...) fprintf(stderr, __VA_ARGS__)
 #else
 #define dprintf(...)
 #endif

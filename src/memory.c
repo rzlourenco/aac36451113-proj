@@ -6,9 +6,12 @@
 #include <stdio.h>
 
 static word_t *mem = NULL;
-static size_t memsize = 0;
+static address_t memsize = 0;
 
-int init_memory(size_t bits) {
+static inline address_t real_address(address_t address);
+static inline word_t reverse_endianness(word_t value);
+
+void init_memory(size_t bits) {
     if (mem != NULL) {
         free(mem);
     }
@@ -16,42 +19,21 @@ int init_memory(size_t bits) {
     memsize = 1u << bits;
     mem = calloc(memsize, sizeof(*mem));
 
-    if (mem == NULL) {
-        return -1;
-    }
-
-    return 0;
+    assert(mem);
 }
 
-static inline word_t reverse_endianness(word_t value) {
-    assert(sizeof(word_t) == 4);
+void flash_memory(address_t address, char const *data, size_t count) {
+    assert(mem);
+    assert(count % sizeof(word_t) == 0);
+    assert(address + count <= memsize);
 
+    address = real_address(address);
 
-    return ((uword_t)value >>  0u & 0xFFu) << 24u |
-           ((uword_t)value >>  8u & 0xFFu) << 16u |
-           ((uword_t)value >> 16u & 0xFFu) <<  8u |
-           ((uword_t)value >> 24u & 0xFFu) <<  0u;
-}
-
-int flash_memory(address_t address, char const *data, size_t count) {
-    if (mem == NULL) {
-        return 1;
+    // FIXME: ROM comes in big endian...
+    for (address_t offset = 0; offset < count; offset += 1) {
+        word_t word = ((word_t *)data)[offset];
+        mem[offset + address] = reverse_endianness(word);
     }
-
-    if (address + count >= memsize) {
-        return 2;
-    }
-
-    word_t const *datap = (word_t const *)data;
-    for (size_t i = 0; i < count; ++i) {
-        mem[i] = reverse_endianness(datap[i]);
-    }
-
-    return 0;
-}
-
-static inline address_t real_address(address_t address) {
-    return (address & (memsize - 1)) >> log2i(sizeof(word_t));
 }
 
 word_t memory_read(address_t address) {
@@ -64,10 +46,37 @@ word_t memory_read(address_t address) {
     return data;
 }
 
-void memory_write(address_t address, word_t data_in, int write_enable) {
+void memory_write(address_t address, word_t data_in) {
     assert(mem != NULL && "memory not initialized!");
 
-    if (write_enable) {
+    dprintf("memory_write(0x%08x [0x%08x], 0x%08x)", address, real_address(address), data_in);
+
+    // stdout memory-mapped device
+    if (address == 0xFFFFFFC0) {
+        printf("%c", (char)data_in);
+    } else {
         mem[real_address(address)] = data_in;
     }
+}
+
+static inline address_t real_address(address_t address) {
+    address_t ret = address;
+
+    // Remove non-addressable bits
+    ret &= memsize - 1;
+
+    // We only allow aligned accesses, so mask away bits
+    // that would cause misalignments
+    ret >>= log2i(sizeof(word_t));
+
+    return ret;
+}
+
+static inline word_t reverse_endianness(word_t value) {
+    assert(sizeof(word_t) == 4);
+
+    return ((uword_t)value >>  0u & 0xFFu) << 24u |
+           ((uword_t)value >>  8u & 0xFFu) << 16u |
+           ((uword_t)value >> 16u & 0xFFu) <<  8u |
+           ((uword_t)value >> 24u & 0xFFu) <<  0u;
 }

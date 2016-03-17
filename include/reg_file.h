@@ -8,4 +8,6 @@ void reg_file(address_t aa, word_t *a,
               int write_enabled);
 
 word_t reg_file_read(address_t address);
-void reg_file_write(address_t address, word_t data, int write_enable);
+void reg_file_write(address_t address, word_t data);
+
+void dump_registers(void);

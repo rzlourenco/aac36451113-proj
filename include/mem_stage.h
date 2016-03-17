@@ -3,9 +3,9 @@
 #include "common.h"
 
 struct mem_wb_state_t {
-    address_t next_pc;
-    word_t data_out;
-    word_t s;
+    address_t pc;
+    word_t memory_out;
+    word_t alu_result;
     int sel_out;
     int write_enabled;
     int dest_address;

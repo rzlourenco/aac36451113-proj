@@ -14,13 +14,13 @@ struct cpu_state_t {
 };
 
 struct msr_t {
-    int32_t _unused0 : 29;
-    int32_t c : 1; /* carry flag */
-    int32_t _unused1 : 2;
+    word_t c : 1;
+    word_t i : 1;
 };
 
 extern struct cpu_state_t cpu_state;
 extern struct msr_t msr;
+extern word_t rIMM;
 
 void init_cpu(void);
 int cpu_halt(void);

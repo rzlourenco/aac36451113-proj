@@ -5,7 +5,7 @@
 struct id_ex_state_t {
     address_t pc;
 
-    word_t op_a, op_b, imm;
+    word_t op_a, op_b, op_c, imm;
 
     int select_operation, select_op_a, select_op_b;
 

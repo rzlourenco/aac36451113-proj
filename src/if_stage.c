@@ -9,9 +9,8 @@ struct if_state_t if_state;
 void if_stage(void) {
     word_t instruction = memory_read(cpu_state.pc);
 
-    // ADD r0,r0,r0
-    // Apparently should not be emitted by the compiler
-    if (instruction == 0) {
+    // ADD r0,r1,r1
+    if (instruction == (1u << 10 | 1u << 15)) {
         cpu_state.halt = 1;
         cpu_state.if_enable = 0;
         return;

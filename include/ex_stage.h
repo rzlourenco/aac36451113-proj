@@ -3,22 +3,20 @@
 #include "common.h"
 
 struct ex_mem_state_t {
-    address_t next_pc;
+    address_t pc;
     int cond;
-    word_t a;
-    word_t s;
+    word_t op_a;
+    word_t alu_result;
     int mem_write;
     int sel_out;
     int write_enabled;
     int dest_address;
 };
 
-enum alu_ops {
-    ALU_ADD  = 0,
-    ALU_SUB  = 1,
-    ALU_ADDC = 2,
-    ALU_SUBC = 3,
-    ALU_MUL  = 4,
+enum {
+    ALU_ADD,
+    ALU_SUB,
+    ALU_CMP,
 };
 
 extern struct ex_mem_state_t ex_mem_state;

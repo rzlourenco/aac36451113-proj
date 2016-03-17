@@ -10,6 +10,7 @@
 
 struct cpu_state_t cpu_state;
 struct msr_t msr;
+word_t rIMM;
 
 void init_cpu(void) {
     cpu_state.pc = 0;
@@ -26,8 +27,11 @@ void init_cpu(void) {
     cpu_state.total_instructions = 0;
 
     msr.c = 0;
+    msr.i = 0;
 
-    //memset(&if_state, 0, sizeof(if_state));
+    rIMM = 0;
+
+    memset(&if_state, 0, sizeof(if_state));
     memset(&if_id_state, 0, sizeof(if_id_state));
     memset(&id_ex_state, 0, sizeof(id_ex_state));
     memset(&ex_mem_state, 0, sizeof(ex_mem_state));
@@ -40,24 +44,24 @@ int cpu_halt(void) {
 }
 
 void clock(void) {
-    if (cpu_state.if_enable) {
-        if_stage();
-    }
-
-    if (cpu_state.id_enable) {
-        id_stage();
-    }
-
-    if (cpu_state.ex_enable) {
-        ex_stage();
+    if (cpu_state.wb_enable) {
+        wb_stage();
     }
 
     if (cpu_state.mem_enable) {
         mem_stage();
     }
 
-    if (cpu_state.wb_enable) {
-        wb_stage();
+    if (cpu_state.ex_enable) {
+        ex_stage();
+    }
+
+    if (cpu_state.id_enable) {
+        id_stage();
+    }
+
+    if (cpu_state.if_enable) {
+        if_stage();
     }
 
     ++cpu_state.total_cycles;

@@ -1,5 +1,6 @@
 #include "cpu_state.h"
 #include "memory.h"
+#include "reg_file.h"
 #include "utils.h"
 
 #include <assert.h>
@@ -62,7 +63,7 @@ int main(int argc, char **argv) {
         exit(2);
     }
 
-    assert(rom_stat.st_size >= 0);
+    assert(rom_stat.st_size > 0);
     void *rom = mmap(NULL, rom_stat.st_size, PROT_READ, MAP_PRIVATE, rom_fd, 0);
     if (rom == MAP_FAILED) {
         perror("mmap");
@@ -78,7 +79,7 @@ int main(int argc, char **argv) {
     init_memory(mem_bits);
     flash_memory(0, rom, rom_stat.st_size);
 
-    if (munmap(rom, rom_stat.st_blksize) < 0) {
+    if (munmap(rom, rom_stat.st_size) < 0) {
         perror("munmap");
         exit(2);
     }
@@ -86,6 +87,9 @@ int main(int argc, char **argv) {
     while (!cpu_halt()) {
         clock();
     }
+
+    fprintf(stderr, "CPU has halted.\n");
+    dump_registers();
 
     return 0;
 }
