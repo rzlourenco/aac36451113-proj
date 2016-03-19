@@ -16,6 +16,7 @@ struct id_ex_state_t {
     int write_enabled;
 
     int keep_carry;
+    int is_mem;
 };
 
 extern struct id_ex_state_t id_ex_state;

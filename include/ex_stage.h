@@ -11,6 +11,8 @@ struct ex_mem_state_t {
     int sel_out;
     int write_enabled;
     int dest_address;
+
+    int is_mem;
 };
 
 enum {

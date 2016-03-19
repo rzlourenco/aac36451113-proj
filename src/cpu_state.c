@@ -44,25 +44,20 @@ int cpu_halt(void) {
 }
 
 void clock(void) {
-    if (cpu_state.wb_enable) {
+    if (cpu_state.wb_enable)
         wb_stage();
-    }
 
-    if (cpu_state.mem_enable) {
+    if (cpu_state.mem_enable)
         mem_stage();
-    }
 
-    if (cpu_state.ex_enable) {
+    if (cpu_state.ex_enable)
         ex_stage();
-    }
 
-    if (cpu_state.id_enable) {
+    if (cpu_state.id_enable)
         id_stage();
-    }
 
-    if (cpu_state.if_enable) {
+    if (cpu_state.if_enable)
         if_stage();
-    }
 
     ++cpu_state.total_cycles;
 }

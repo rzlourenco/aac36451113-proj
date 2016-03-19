@@ -64,22 +64,22 @@ int main(int argc, char **argv) {
     }
 
     assert(rom_stat.st_size > 0);
-    void *rom = mmap(NULL, rom_stat.st_size, PROT_READ, MAP_PRIVATE, rom_fd, 0);
+    void *rom = mmap(NULL, (size_t)rom_stat.st_size, PROT_READ, MAP_PRIVATE, rom_fd, 0);
     if (rom == MAP_FAILED) {
         perror("mmap");
         exit(2);
     }
 
-    if (rom_stat.st_size % sizeof(word_t) != 0) {
-        fprintf(stderr, "Invalid ROM size (%zd): not a multiple of %zd bytes\n", rom_stat.st_size, sizeof(word_t));
-        exit(2);
-    }
+//    if (rom_stat.st_size % sizeof(word_t) != 0) {
+//        fprintf(stderr, "Invalid ROM size (%zd): not a multiple of %zd bytes\n", rom_stat.st_size, sizeof(word_t));
+//        exit(2);
+//    }
 
     init_cpu();
     init_memory(mem_bits);
-    flash_memory(0, rom, rom_stat.st_size);
+    flash_memory(rom, (size_t)rom_stat.st_size);
 
-    if (munmap(rom, rom_stat.st_size) < 0) {
+    if (munmap(rom, (size_t)rom_stat.st_size) < 0) {
         perror("munmap");
         exit(2);
     }

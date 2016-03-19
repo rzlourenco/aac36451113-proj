@@ -6,7 +6,7 @@
 #include <stdio.h>
 
 static word_t *mem = NULL;
-static address_t memsize = 0;
+static size_t memsize = 0;
 
 static inline address_t real_address(address_t address);
 static inline word_t reverse_endianness(word_t value);
@@ -17,29 +17,26 @@ void init_memory(size_t bits) {
     }
 
     memsize = 1u << bits;
+    assert(memsize > 0);
     mem = calloc(memsize, sizeof(*mem));
 
     assert(mem);
 }
 
-void flash_memory(address_t address, char const *data, size_t count) {
+void flash_memory(char const *data, size_t count) {
     assert(mem);
-    assert(count % sizeof(word_t) == 0);
-    assert(address + count <= memsize);
+    assert(memsize > 0);
 
-    address = real_address(address);
+    count = count > memsize ? memsize : count;
 
-    // FIXME: ROM comes in big endian...
-    for (address_t offset = 0; offset < count; offset += 1) {
-        word_t word = ((word_t *)data)[offset];
-        mem[offset + address] = reverse_endianness(word);
-    }
+    memcpy(mem, data, count);
 }
 
 word_t memory_read(address_t address) {
     assert(mem != NULL && "memory not initialized!");
 
-    word_t data = mem[real_address(address)];
+    // FIXME: ROM comes in big endian...
+    word_t data = reverse_endianness(mem[real_address(address)]);
 
     dprintf("memory_read(0x%08x [0x%08x]) = 0x%x\n", address, real_address(address), data);
 
@@ -52,10 +49,11 @@ void memory_write(address_t address, word_t data_in) {
     dprintf("memory_write(0x%08x [0x%08x], 0x%08x)", address, real_address(address), data_in);
 
     // stdout memory-mapped device
-    if (address == 0xFFFFFFC0) {
+    if (address == STDOUT_MMIO) {
         printf("%c", (char)data_in);
     } else {
-        mem[real_address(address)] = data_in;
+        // FIXME: ROM comes in big endian...
+        mem[real_address(address)] = reverse_endianness(data_in);
     }
 }
 

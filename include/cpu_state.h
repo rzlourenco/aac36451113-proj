@@ -20,7 +20,7 @@ struct msr_t {
 
 extern struct cpu_state_t cpu_state;
 extern struct msr_t msr;
-extern word_t rIMM;
+extern uint16_t rIMM;
 
 void init_cpu(void);
 int cpu_halt(void);

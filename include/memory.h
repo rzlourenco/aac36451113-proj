@@ -6,7 +6,7 @@
 
 void init_memory(size_t bits);
 
-void flash_memory(address_t address, char const *data, size_t count);
+void flash_memory(char const *data, size_t count);
 
 word_t memory_read(address_t address);
 

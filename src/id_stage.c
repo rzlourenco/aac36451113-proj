@@ -27,37 +27,43 @@ void id_stage(void) {
     int const k = (opcode & 0x04) != 0;
     int const i = (opcode & 0x08) != 0;
 
+    struct id_ex_state_t new_id_ex_state;
+
     switch (opcode) {
-        // ADD, ADDC, ADDK, ADDKC, ADDI, ADDIC, ADDIK, ADDIKC
-        case 0x00:
-        case 0x02:
-        case 0x04:
-        case 0x06:
-        case 0x08:
-        case 0x0A:
-        case 0x0C:
-        case 0x0E:
-        // RSUB, RSUBC, RSUBK/CMP/CMPU, RSUBKC, RSUBI, RSUBIC, RSUBIK, RSUBIKC
-        case 0x01:
-        case 0x03:
-        case 0x05:
-        case 0x07:
-        case 0x09:
-        case 0x0B:
-        case 0x0D:
-        case 0x0F: {
-            id_ex_state.dest_address = rd;
-            id_ex_state.select_operation = opcode & 0x01 ? ALU_SUB : ALU_ADD;
-            id_ex_state.op_a = reg_file_read(ra);
-            id_ex_state.op_b = i ? sign_extend_imm(imm16) : reg_file_read(rb);
-            id_ex_state.op_c = c ? msr.c : 0;
-            id_ex_state.keep_carry = k;
-            id_ex_state.write_enabled = 1;
+        // ADD, ADDC, ADDK, ADDKC
+        case 0x00: // ADD
+        case 0x01: // RSUB
+        case 0x02: // ADDC
+        case 0x03: // RSUBC
+        case 0x04: // ADDK
+        case 0x06: // ADDKC
+        case 0x07: // RSUBKC
+            ASSERT_OR_ILLEGAL(BITS(bits, 0, 10) == 0);
+            // fall through
+
+        case 0x05: // RSUBK/CMP/CMPU
+        case 0x08: // ADDI
+        case 0x09: // RSUBI
+        case 0x0A: // ADDIC
+        case 0x0B: // RSUBIC
+        case 0x0C: // ADDIK
+        case 0x0D: // RSUBIK
+        case 0x0E: // ADDIKC
+        case 0x0F: // RSUBIKC
+        {
+            new_id_ex_state.dest_address = rd;
+            new_id_ex_state.select_operation = opcode & 0x01 ? ALU_SUB : ALU_ADD;
+            new_id_ex_state.op_a = reg_file_read(ra);
+            new_id_ex_state.op_b = i ? sign_extend_imm(imm16) : reg_file_read(rb);
+            new_id_ex_state.op_c = c ? msr.c : 0;
+            new_id_ex_state.keep_carry = k;
+            new_id_ex_state.write_enabled = 1;
+            new_id_ex_state.is_mem = 0;
 
             // We're dealing with a CMP/CMPU
             if (opcode == 0x05 && (BITS(bits, 0, 10) == 0x001 || BITS(bits, 0, 10) == 0x003)) {
-                id_ex_state.select_operation = ALU_CMP;
-                id_ex_state.write_enabled = 0;
+                new_id_ex_state.select_operation = ALU_CMP;
+                new_id_ex_state.write_enabled = 0;
             }
 
             break;
@@ -89,7 +95,12 @@ void id_stage(void) {
         }
 
         case 0x2C: // IMM
+        {
+            msr.i = 1;
+            rIMM = (uint16_t)imm16;
+
             break;
+        }
 
         case 0x30: // LBU
         case 0x38: // LBUI
@@ -128,25 +139,23 @@ void id_stage(void) {
 
         default:
         invalid_instruction:
-            fprintf(stderr, "Illegal instruction (opcode %d, instr 0x%08x)\n", opcode, bits);
+            fprintf(stderr, "Illegal instruction (opcode %d pc %08x instr %08x)\n", opcode, if_id_state.pc, bits);
             abort();
-            break;
     };
 
-    if (cpu_state.halt && !cpu_state.if_enable) {
-        cpu_state.id_enable = 0;
-    }
+    id_ex_state = new_id_ex_state;
 
+    cpu_state.id_enable = cpu_state.if_enable;
     cpu_state.ex_enable = 1;
 }
 
 
 static word_t sign_extend_imm(word_t imm) {
-    assert((uword_t)(half_word_t)imm == (uword_t)imm);
+    assert((uword_t) (half_word_t) imm == (uword_t) imm);
 
     if (msr.i) {
         return rIMM << 16 | imm;
     } else {
-        return (word_t)(half_word_t)imm;
+        return (word_t) (half_word_t) imm;
     }
 }

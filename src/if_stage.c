@@ -7,10 +7,14 @@ struct if_id_state_t if_id_state;
 struct if_state_t if_state;
 
 void if_stage(void) {
+    if (cpu_state.halt != 0) {
+        return;
+    }
+
     word_t instruction = memory_read(cpu_state.pc);
 
     // ADD r0,r1,r1
-    if (instruction == (1u << 10 | 1u << 15)) {
+    if (instruction == (1u << 10 | 1u << 15) || instruction == 0) {
         cpu_state.halt = 1;
         cpu_state.if_enable = 0;
         return;
