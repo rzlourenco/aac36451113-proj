@@ -38,15 +38,11 @@ word_t memory_read(address_t address) {
     // FIXME: ROM comes in big endian...
     word_t data = reverse_endianness(mem[real_address(address)]);
 
-    dprintf("memory_read(0x%08x [0x%08x]) = 0x%x\n", address, real_address(address), data);
-
     return data;
 }
 
 void memory_write(address_t address, word_t data_in) {
     assert(mem != NULL && "memory not initialized!");
-
-    dprintf("memory_write(0x%08x [0x%08x], 0x%08x)", address, real_address(address), data_in);
 
     // stdout memory-mapped device
     if (address == STDOUT_MMIO) {
@@ -73,8 +69,8 @@ static inline address_t real_address(address_t address) {
 static inline word_t reverse_endianness(word_t value) {
     assert(sizeof(word_t) == 4);
 
-    return ((uword_t)value >>  0u & 0xFFu) << 24u |
-           ((uword_t)value >>  8u & 0xFFu) << 16u |
-           ((uword_t)value >> 16u & 0xFFu) <<  8u |
-           ((uword_t)value >> 24u & 0xFFu) <<  0u;
+    return (value >>  0u & 0xFFu) << 24u |
+           (value >>  8u & 0xFFu) << 16u |
+           (value >> 16u & 0xFFu) <<  8u |
+           (value >> 24u & 0xFFu) <<  0u;
 }

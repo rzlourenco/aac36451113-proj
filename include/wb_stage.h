@@ -6,15 +6,16 @@ struct wb_state_t {
     address_t pc;
     word_t memory_out;
     word_t alu_result;
-    int sel_out;
+
+    address_t dest_address;
+    int select_data;
     int write_enabled;
-    int dest_address;
 };
 
 enum {
-    WB_SEL_PC,
-    WB_SEL_EX,
-    WB_SEL_MEM,
+    WB_SEL_PC = 0,
+    WB_SEL_EX = 1,
+    WB_SEL_MEM = 2,
 };
 
 extern struct wb_state_t wb_state;

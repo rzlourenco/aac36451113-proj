@@ -11,7 +11,7 @@ struct wb_state_t wb_state;
 void wb_stage(void) {
     word_t data;
 
-    switch (wb_state.sel_out) {
+    switch (wb_state.select_data) {
         case WB_SEL_PC:
             data = wb_state.pc;
             break;
@@ -22,16 +22,13 @@ void wb_stage(void) {
             data = wb_state.memory_out;
             break;
         default:
-            abort();
+            ABORT_MSG("unknown WB_SEL");
     }
 
     if (wb_state.write_enabled) {
         reg_file_write(wb_state.dest_address, data);
     }
 
-    if (cpu_state.halt && !cpu_state.mem_enable) {
-        cpu_state.wb_enable = 0;
-    }
-
+    cpu_state.wb_enable = 0;
     cpu_state.total_instructions++;
 }

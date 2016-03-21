@@ -1,18 +1,12 @@
 #include "cpu_state.h"
 #include "memory.h"
-#include "reg_file.h"
-#include "utils.h"
 
 #include <assert.h>
-#include <errno.h>
 #include <fcntl.h>
 #include <getopt.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <signal.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
-#include <unistd.h>
 
 void usage(char const *argv0) {
     fprintf(stderr, "Usage: %s [ -b address_bits ] -r rom_file\n", argv0);
@@ -20,8 +14,11 @@ void usage(char const *argv0) {
 }
 
 int main(int argc, char **argv) {
-    assert(sizeof(struct msr_t) == sizeof(int32_t));
+    assert(sizeof(struct msr_t) == sizeof(word_t));
 
+    struct sigaction action = { .sa_handler = cpu_dump, .sa_flags = 0 };
+    assert(sigaction(SIGABRT, &action, NULL) != -1);
+    assert(sigaction(SIGINT, &action, NULL) != -1);
 
     int opt;
     size_t mem_bits = 16;
@@ -70,10 +67,12 @@ int main(int argc, char **argv) {
         exit(2);
     }
 
-//    if (rom_stat.st_size % sizeof(word_t) != 0) {
-//        fprintf(stderr, "Invalid ROM size (%zd): not a multiple of %zd bytes\n", rom_stat.st_size, sizeof(word_t));
-//        exit(2);
-//    }
+    if (0) {
+        if (rom_stat.st_size % sizeof(word_t) != 0) {
+            fprintf(stderr, "Invalid ROM size (%zd): not a multiple of %zd bytes\n", (size_t)rom_stat.st_size, sizeof(word_t));
+            exit(2);
+        }
+    }
 
     init_cpu();
     init_memory(mem_bits);
@@ -84,12 +83,12 @@ int main(int argc, char **argv) {
         exit(2);
     }
 
+    cpu_dump(0);
+
     while (!cpu_halt()) {
         clock();
+        cpu_dump(0);
     }
-
-    fprintf(stderr, "CPU has halted.\n");
-    dump_registers();
 
     return 0;
 }

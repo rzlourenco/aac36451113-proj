@@ -7,6 +7,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <wb_stage.h>
 
 #define ASSERT_OR_ILLEGAL(COND) do { if (!(COND)) goto invalid_instruction; } while (0)
 
@@ -15,22 +16,25 @@ struct id_state_t id_state;
 static word_t extend_immediate(word_t imm);
 
 void id_stage(void) {
-    int32_t const bits = (uint32_t) id_state.instruction;
-    int const opcode = BITS(bits, 26, 31);
-    int const rd = BITS(bits, 21, 25);
-    int const ra = BITS(bits, 16, 20);
-    int const rb = BITS(bits, 11, 15);
-    word_t const imm16 = (int16_t) BITS(bits, 0, 15);
+    word_t const bits = id_state.instruction;
+    word_t const opcode = BITS(bits, 26, 31);
+    word_t const rd = BITS(bits, 21, 25);
+    word_t const ra = BITS(bits, 16, 20);
+    word_t const rb = BITS(bits, 11, 15);
+    word_t const imm16 = (h_word_t) BITS(bits, 0, 15);
     word_t const imm5 = BITS(bits, 0, 4);
 
-    int const function = BITS(bits,  0, 10);
-    int const br_link = BITS(bits, 18, 18) != 0;
-    int const br_abs = BITS(bits, 19, 19) != 0;
-    int const br_delayed = BITS(bits, 20, 20) != 0;
-    int const cmp = BITS(bits, 21, 25);
-    int const use_carry = BITS(bits, 27, 27) != 0;
-    int const keep_carry = BITS(bits, 28, 28) != 0;
-    int const has_imm = BITS(bits, 29, 29) != 0;
+    word_t const function = BITS(bits,  0, 10);
+    word_t const br_link = BITS(bits, 18, 18) != 0;
+    word_t const br_absolute = BITS(bits, 19, 19) != 0;
+    word_t const br_delay = BITS(bits, 20, 20) != 0;
+    word_t const br_cond = BITS(bits, 21, 25);
+    word_t const use_carry = BITS(bits, 27, 27) != 0;
+    word_t const keep_carry = BITS(bits, 28, 28) != 0;
+    word_t const has_imm = BITS(bits, 29, 29) != 0;
+
+    // Clear EX stage (issue a no-op)
+    ex_state = (struct ex_state_t){ 0 };
 
     // The PC passes through
     ex_state.pc = id_state.pc;
@@ -44,6 +48,7 @@ void id_stage(void) {
         case 0x04: // ADDK
         case 0x06: // ADDKC
         case 0x07: // RSUBKC
+    cpu_state.ex_enable = cpu_state.id_enable;
             ASSERT_OR_ILLEGAL(function == 0);
             // fall through
 
@@ -58,6 +63,9 @@ void id_stage(void) {
         case 0x0F: // RSUBIKC
         {
             ex_state.wb_dest_register = rd;
+            ex_state.wb_write_enable = 1;
+            ex_state.wb_select_data = WB_SEL_EX;
+
             ex_state.alu_control = EX_ALU_ADD;
             ex_state.op_a = reg_file_read(ra);
             ex_state.op_b = has_imm ? extend_immediate(imm16) : reg_file_read(rb);
@@ -69,10 +77,10 @@ void id_stage(void) {
                 ex_state.op_c = 1;
             }
 
-            ex_state.op_c = use_carry ? msr.c : ex_state.op_c;
+            if (use_carry) {
+                ex_state.op_c = msr.c;
+            }
             ex_state.carry_write_enable = !keep_carry;
-            ex_state.wb_write_enable = 1;
-            ex_state.mem_enable = 0;
 
             msr.i = 0;
 
@@ -119,14 +127,43 @@ void id_stage(void) {
         case 0x2A: // XORI
         case 0x2B: // ANDNI
         {
-            ABORT_MSG("not implemented");
+            ex_state.wb_dest_register = rd;
+            ex_state.wb_select_data = WB_SEL_EX;
+            ex_state.wb_write_enable = 1;
+
+            ex_state.op_a = reg_file_read(ra);
+            ex_state.op_b = has_imm ? extend_immediate(imm16) : reg_file_read(rb);
+
+            switch (BITS(opcode, 0, 1)) {
+                case 0:
+                    ex_state.alu_control = EX_ALU_OR;
+                    break;
+                case 1:
+                    ex_state.alu_control = EX_ALU_AND;
+                    break;
+                case 2:
+                    ex_state.alu_control = EX_ALU_XOR;
+                    break;
+                case 3:
+                    ex_state.alu_control = EX_ALU_AND;
+                    break;
+                default:
+                    ABORT_MSG("should never happen!");
+            }
+
+            // ANDN negates the second operand
+            if (opcode & 0x03) {
+                ex_state.op_b = ~ex_state.op_b;
+            }
+
+            msr.i = 0;
             break;
         }
 
         case 0x2C: // IMM
         {
             msr.i = 1;
-            rIMM = (uint16_t)imm16;
+            rIMM = (h_word_t)imm16;
 
             break;
         }
@@ -158,29 +195,46 @@ void id_stage(void) {
             ABORT_MSG("not implemented");
             break;
 
+            ex_state.op_c = 0;
         case 0x36: // SW
         case 0x3E: // SWI
             ABORT_MSG("not implemented");
             break;
 
-        case 0x26: // BR, BRL, BRA, BRAL, BRD, BRLD, BRAD, BRALD
+        case 0x26: // BR,  BRL,  BRA,  BRAL,  BRD,  BRLD,  BRAD,  BRALD
             ASSERT_OR_ILLEGAL(function == 0);
             // fallthrough
 
         case 0x2E: // BRI, BRLI, BRAI, BRALI, BRID, BRLID, BRAID, BRALID
         {
-            if (br_delayed != 0)
-                fprintf(stderr, "[warn] delayed branches are not delayed!\n");
+            cpu_state.if_stalls = 2;
 
-            ABORT_MSG("not implemented");
+            ex_state.branch_enable = 1;
+            ex_state.branch_cond = EX_COND_ALWAYS;
+            ex_state.alu_control = EX_ALU_ADD;
 
+            if (br_link) {
+                ex_state.wb_dest_register = rd;
+                ex_state.wb_select_data = WB_SEL_PC;
+                ex_state.wb_write_enable = 1;
+            }
+
+            if (br_delay) {
+                cpu_state.delayed = 1;
+            }
+
+            ex_state.op_a = br_absolute ? 0 : id_state.pc;
+            ex_state.op_b = has_imm ? extend_immediate(imm16) : reg_file_read(rb);
+
+            msr.i = 0;
             break;
         }
 
-        case 0x27: // BEQ, BNE, BLT, BLE, BGT, BGE, BEQD, BNED, BLTD, BLED, BGTD, BGED
-        case 0x2F: // BEQI, BNEI, BLTI, BLEI, BGTI, BGEI, BEQID, BNEID, BGTID, BGEID
+        case 0x27: // BEQ,  BNE,  BLT,  BLE,  BGT,  BGE,  BEQD,  BNED,  BLTD,  BLED,  BGTD,  BGED
+            ASSERT_OR_ILLEGAL(function == 0);
+            // fallthrough
+        case 0x2F: // BEQI, BNEI, BLTI, BLEI, BGTI, BGEI, BEQID, BNEID, BLTID, BLEID, BGTID, BGEID
         {
-            ASSERT_OR_ILLEGAL(cmp <= 5u);
             ABORT_MSG("not implemented");
             break;
         }
@@ -191,19 +245,20 @@ void id_stage(void) {
 
         default:
         invalid_instruction:
-            ABORT_MSG("Illegal instruction (opcode %d pc %08x instr %08x)\n", opcode, id_state.pc, bits);
+            ABORT_MSG("illegal instruction");
+            break;
     };
 
-    cpu_state.id_enable = cpu_state.if_enable;
     cpu_state.ex_enable = 1;
+    cpu_state.id_enable = 0;
 }
 
 static word_t extend_immediate(word_t imm) {
-    assert((uword_t) (half_word_t) imm == (uword_t) imm);
+    assert((h_word_t)imm == imm);
 
     if (msr.i) {
-        return rIMM << 16 | imm;
+        return (rIMM << 16) | imm;
     } else {
-        return (word_t) (half_word_t) imm;
+        return SIGN_EXTEND(imm, 16);
     }
 }

@@ -10,4 +10,4 @@ void reg_file(address_t aa, word_t *a,
 word_t reg_file_read(address_t address);
 void reg_file_write(address_t address, word_t data);
 
-void dump_registers(void);
+void reg_file_dump(void);

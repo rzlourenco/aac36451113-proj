@@ -20,7 +20,7 @@ char *strdup(char const *s) {
 
 #endif
 
-/* Source: https://graphics.stanford.edu/~seander/bithacks.html */
+// Source: https://graphics.stanford.edu/~seander/bithacks.html
 int log2i(int value) {
     int const b[] = { 0x2, 0xC, 0xF0, 0xFF00, 0xFFFF0000 };
     int const S[] = { 1, 2, 4, 8, 16 };

@@ -10,11 +10,11 @@ struct ex_state_t {
     int carry_write_enable;
     int cmp_unsigned;
 
-    int is_branch;
+    int branch_enable;
     int branch_cond;
 
+    address_t wb_dest_register;
     int wb_select_data;
-    int wb_dest_register;
     int wb_write_enable;
 
     int mem_enable;
@@ -22,10 +22,11 @@ struct ex_state_t {
 };
 
 enum {
-    EX_ALU_ADD,
-    EX_ALU_SUB,
-    EX_ALU_CMP,
-    EX_ALU_CMPU,
+    EX_ALU_ADD = 0,
+    EX_ALU_CMP = 1,
+    EX_ALU_OR = 2,
+    EX_ALU_AND = 3,
+    EX_ALU_XOR = 4,
 };
 
 enum {

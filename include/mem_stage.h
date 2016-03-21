@@ -4,14 +4,14 @@
 
 struct mem_state_t {
     address_t pc;
-    int cond;
+
+    address_t wb_dest_register;
+    int wb_select_data;
+    int wb_write_enable;
+
     word_t data;
     word_t alu_result;
     int write_enable;
-    int sel_out;
-    int wb_write_enable;
-    int wb_dest_register;
-
     int enable;
 };
 
