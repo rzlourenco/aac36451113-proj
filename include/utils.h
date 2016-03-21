@@ -1,7 +1,10 @@
 #pragma once
 
-#define BITS(VALUE, LOW, HIGH) (((VALUE)>>(LOW))&((1u<<((HIGH)-(LOW)+1u))-1u))
+#include <assert.h>
+#include <stdlib.h>
 #include <stdio.h>
+
+#define BITS(VALUE, LOW, HIGH) (((VALUE)>>(LOW))&((1u<<((HIGH)-(LOW)+1u))-1u))
 
 #define ARRAY_LENGTH(ARRAY) (sizeof(ARRAY)/sizeof((ARRAY)[0]))
 
@@ -46,5 +49,15 @@ char *strdup(char const *s);
 #else
 #define dprintf(...)
 #endif
+
+#define STRINGIFY(ARG) #ARG
+#define TOSTRING(ARG) STRINGIFY(ARG)
+
+#define ABORT_MSG_HELPER(MSG, ...) do { \
+    fprintf(stderr, __FILE__ ":" TOSTRING(__LINE__) ": " MSG "\n%s", __VA_ARGS__);\
+    abort();\
+} while (0)
+
+#define ABORT_MSG(...) ABORT_MSG_HELPER(__VA_ARGS__, "")
 
 int log2i(int value);

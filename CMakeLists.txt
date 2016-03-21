@@ -1,17 +1,10 @@
 cmake_minimum_required(VERSION 3.3)
 project(aac_proj)
 
-option(USE_CLANG "Use Clang to compile" ON)
-
-if (USE_CLANG)
-    set(CMAKE_C_COMPILER   "clang")
-    set(CMAKE_CXX_COMPILER "clang++")
-endif(USE_CLANG)
-
-set(COMMON_C_FLAGS "-Wall -Wextra --std=c11 --pedantic-errors")
+set(COMMON_C_FLAGS "-Wall -Wextra -Wpedantic -Wuninitialized --std=c11 --pedantic-errors")
 
 set(CMAKE_C_FLAGS       "${CMAKE_C_FLAGS}       ${COMMON_C_FLAGS}")
-set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} ${COMMON_C_FLAGS} -DDEBUG=1 -ggdb -fsanitize=address,integer,undefined")
+set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} ${COMMON_C_FLAGS} -Ofast -DDEBUG=1 -ggdb -fsanitize=address,undefined")
 
 include_directories(include)
 

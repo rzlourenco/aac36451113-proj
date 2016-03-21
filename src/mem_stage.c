@@ -3,20 +3,23 @@
 #include "cpu_state.h"
 #include "ex_stage.h"
 #include "memory.h"
+#include "wb_stage.h"
 
-struct mem_wb_state_t mem_wb_state;
+struct mem_state_t mem_state;
 
 void mem_stage(void) {
     // These pass unchanged to the next stage
-    mem_wb_state.pc = ex_mem_state.pc;
-    mem_wb_state.alu_result = ex_mem_state.alu_result;
-    mem_wb_state.sel_out = ex_mem_state.sel_out;
-    mem_wb_state.write_enabled = ex_mem_state.write_enabled;
-    mem_wb_state.dest_address = ex_mem_state.dest_address;
+    wb_state.pc = mem_state.pc;
+    wb_state.alu_result = mem_state.alu_result;
+    wb_state.sel_out = mem_state.sel_out;
+    wb_state.write_enabled = mem_state.wb_write_enable;
+    wb_state.dest_address = mem_state.wb_dest_register;
 
-    mem_wb_state.memory_out = memory_read(ex_mem_state.alu_result);
-    if (ex_mem_state.mem_write) {
-        memory_write(ex_mem_state.alu_result, ex_mem_state.op_a);
+    if (mem_state.enable) {
+        wb_state.memory_out = memory_read(mem_state.alu_result);
+        if (mem_state.write_enable) {
+            memory_write(mem_state.alu_result, mem_state.data);
+        }
     }
 
     cpu_state.mem_enable = cpu_state.ex_enable;

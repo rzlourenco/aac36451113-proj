@@ -10,7 +10,7 @@
 
 struct cpu_state_t cpu_state;
 struct msr_t msr;
-word_t rIMM;
+uint16_t rIMM;
 
 void init_cpu(void) {
     cpu_state.pc = 0;
@@ -32,10 +32,10 @@ void init_cpu(void) {
     rIMM = 0;
 
     memset(&if_state, 0, sizeof(if_state));
-    memset(&if_id_state, 0, sizeof(if_id_state));
-    memset(&id_ex_state, 0, sizeof(id_ex_state));
-    memset(&ex_mem_state, 0, sizeof(ex_mem_state));
-    memset(&mem_wb_state, 0, sizeof(mem_wb_state));
+    memset(&id_state, 0, sizeof(id_state));
+    memset(&ex_state, 0, sizeof(ex_state));
+    memset(&mem_state, 0, sizeof(mem_state));
+    memset(&wb_state, 0, sizeof(wb_state));
 }
 
 int cpu_halt(void) {

@@ -7,7 +7,17 @@ struct cpu_state_t {
     address_t pc;
 
     int halt;
-    int if_enable, id_enable, ex_enable, mem_enable, wb_enable;
+
+    union {
+        struct {
+            int if_enable : 1;
+            int id_enable : 1;
+            int ex_enable : 1;
+            int mem_enable : 1;
+            int wb_enable : 1;
+        };
+        int pipeline_stages;
+    };
 
     size_t total_cycles;
     size_t total_instructions;

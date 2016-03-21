@@ -6,25 +6,27 @@
 
 #include <stdlib.h>
 
+struct wb_state_t wb_state;
+
 void wb_stage(void) {
     word_t data;
 
-    switch (mem_wb_state.sel_out) {
+    switch (wb_state.sel_out) {
         case WB_SEL_PC:
-            data = mem_wb_state.pc;
+            data = wb_state.pc;
             break;
         case WB_SEL_EX:
-            data = mem_wb_state.alu_result;
+            data = wb_state.alu_result;
             break;
         case WB_SEL_MEM:
-            data = mem_wb_state.memory_out;
+            data = wb_state.memory_out;
             break;
         default:
             abort();
     }
 
-    if (mem_wb_state.write_enabled) {
-        reg_file_write(mem_wb_state.dest_address, data);
+    if (wb_state.write_enabled) {
+        reg_file_write(wb_state.dest_address, data);
     }
 
     if (cpu_state.halt && !cpu_state.mem_enable) {
