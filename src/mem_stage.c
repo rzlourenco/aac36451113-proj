@@ -8,8 +8,6 @@
 struct mem_state_t mem_state;
 
 void mem_stage(void) {
-    wb_state = (struct wb_state_t){ 0 };
-
     // These pass unchanged to the next stage
     wb_state.pc = mem_state.pc;
     wb_state.select_data = mem_state.wb_select_data;
@@ -17,13 +15,10 @@ void mem_stage(void) {
     wb_state.dest_address = mem_state.wb_dest_register;
     wb_state.alu_result = mem_state.alu_result;
 
-    if (mem_state.enable) {
+    if (mem_state.memory_access) {
         wb_state.memory_out = memory_read(mem_state.alu_result);
         if (mem_state.write_enable) {
             memory_write(mem_state.alu_result, mem_state.data);
         }
     }
-
-    cpu_state.wb_enable = 1;
-    cpu_state.mem_enable = 0;
 }

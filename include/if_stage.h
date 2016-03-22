@@ -4,6 +4,7 @@
 
 struct if_state_t {
     int pc_sel;
+
     address_t branch_pc;
     address_t next_pc;
 };

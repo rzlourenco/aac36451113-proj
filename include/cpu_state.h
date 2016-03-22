@@ -9,21 +9,17 @@ struct cpu_state_t {
 
     address_t pc;
 
-    union {
-        struct {
-            word_t if_enable : 1;
-            word_t id_enable : 1;
-            word_t ex_enable : 1;
-            word_t mem_enable : 1;
-            word_t wb_enable : 1;
-        };
-        word_t pipeline_stages;
-    };
-
     int halt;
-    int branching;
-    int delayed;
+    int has_delayed_branch;
+
     int if_stalls;
+    int id_stall;
+
+    word_t if_enable;
+    word_t id_enable;
+    word_t ex_enable;
+    word_t mem_enable;
+    word_t wb_enable;
 };
 
 struct msr_t {
@@ -34,6 +30,7 @@ struct msr_t {
 extern struct cpu_state_t cpu_state;
 extern struct msr_t msr;
 extern uint16_t rIMM;
+extern int little_endian;
 
 void init_cpu(void);
 int cpu_halt(void);

@@ -5,14 +5,14 @@
 #include "if_stage.h"
 #include "mem_stage.h"
 #include "wb_stage.h"
-#include "reg_file.h"
-
-#include <string.h>
-#include <unistd.h>
+#include "register.h"
 
 struct cpu_state_t cpu_state;
 struct msr_t msr;
 h_word_t rIMM;
+int little_endian;
+
+static void cpu_control_pipeline(void);
 
 void init_cpu(void) {
     cpu_state = (struct cpu_state_t){ 0 };
@@ -20,6 +20,7 @@ void init_cpu(void) {
     cpu_state.pc = 0;
 
     cpu_state.halt = 0;
+    cpu_state.has_delayed_branch = 0;
 
     cpu_state.if_enable = 1;
     cpu_state.id_enable = 0;
@@ -48,25 +49,41 @@ int cpu_halt(void) {
 }
 
 void clock(void) {
-    if (cpu_state.if_stalls > 0) {
-        cpu_state.if_stalls--;
+    if (cpu_state.wb_enable) {
+        cpu_state.wb_enable = 0;
+
+        wb_stage();
     }
 
-    if (cpu_state.wb_enable)
-        wb_stage();
+    if (cpu_state.mem_enable) {
+        cpu_state.wb_enable = 1;
+        cpu_state.mem_enable = 0;
 
-    if (cpu_state.mem_enable)
         mem_stage();
+    }
 
-    if (cpu_state.ex_enable)
+    if (cpu_state.ex_enable) {
+        cpu_state.mem_enable = 1;
+        cpu_state.ex_enable = 0;
+
         ex_stage();
+    }
 
-    if (cpu_state.id_enable)
+    if (cpu_state.id_enable) {
+        cpu_state.ex_enable = 1;
+        cpu_state.id_enable = 0;
+
         id_stage();
+    }
 
     if (cpu_state.if_enable) {
+        cpu_state.id_enable = 1;
+
         if_stage();
     }
+
+    // Advance register-in-use state
+    register_clock();
 
     ++cpu_state.total_cycles;
 }
@@ -75,12 +92,15 @@ void cpu_dump(int signal) {
     fprintf(stderr, "\n");
 
     fprintf(stderr, "\tAfter %zu clock cycle(s)\n", cpu_state.total_cycles);
-    fprintf(stderr, "\tpc=%08x msr{ .c=%d .i=%d } rIMM=%04x if_stalls=%d\n",
+    fprintf(stderr,
+            "\tpc=%08x msr{ .c=%d .i=%d } rIMM=%04x if_stalls=%d has_delayed_branch=%d\n"
+            "",
             cpu_state.pc,
             msr.c,
             msr.i,
             rIMM,
-            cpu_state.if_stalls);
+            cpu_state.if_stalls,
+            cpu_state.has_delayed_branch);
 
     fprintf(stderr, "\tif(%d) next_pc=%08x branch_pc=%08x pc_sel=%d\n",
             cpu_state.if_enable,
@@ -106,7 +126,7 @@ void cpu_dump(int signal) {
             wb_state.pc);
 
     fprintf(stderr, "\n");
-    reg_file_dump();
+    register_dump();
     fprintf(stderr, "\n");
 
     if (signal) {

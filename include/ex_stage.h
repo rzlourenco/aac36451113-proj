@@ -17,8 +17,9 @@ struct ex_state_t {
     int wb_select_data;
     int wb_write_enable;
 
-    int mem_enable;
+    int mem_access;
     int mem_write_enable;
+    word_t mem_data;
 };
 
 enum {

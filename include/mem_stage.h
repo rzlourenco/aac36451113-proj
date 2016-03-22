@@ -12,7 +12,7 @@ struct mem_state_t {
     word_t data;
     word_t alu_result;
     int write_enable;
-    int enable;
+    int memory_access;
 };
 
 extern struct mem_state_t mem_state;

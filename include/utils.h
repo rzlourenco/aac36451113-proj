@@ -61,6 +61,6 @@ char *strdup(char const *s);
     abort();\
 } while (0)
 
-#define ABORT_MSG(...) ABORT_MSG_HELPER(__VA_ARGS__, "")
+#define ABORT_WITH_MSG(...) ABORT_MSG_HELPER(__VA_ARGS__, "")
 
 int log2i(int value);

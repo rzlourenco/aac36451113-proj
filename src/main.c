@@ -7,27 +7,43 @@
 #include <signal.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 void usage(char const *argv0) {
-    fprintf(stderr, "Usage: %s [ -b address_bits ] -r rom_file\n", argv0);
+    fprintf(stderr, "Usage: %s [ -b address_bits ] [ -e (b|l) ] -r rom_file\n", argv0);
+    fprintf(stderr, "\n");
+    fprintf(stderr, " -e (b|l)\tAssume big (b) or little (l) endianness. Little endian by default.\n");
     exit(1);
 }
 
 int main(int argc, char **argv) {
     assert(sizeof(struct msr_t) == sizeof(word_t));
 
-    struct sigaction action = { .sa_handler = cpu_dump, .sa_flags = 0 };
-    assert(sigaction(SIGABRT, &action, NULL) != -1);
-    assert(sigaction(SIGINT, &action, NULL) != -1);
-
     int opt;
     size_t mem_bits = 16;
     char *rom_file = NULL;
+    little_endian = 1;
 
-    while ((opt = getopt(argc, argv, "b:r:")) != -1) {
+    while ((opt = getopt(argc, argv, "b:e:r:")) != -1) {
         switch (opt) {
             case 'b':
                 mem_bits = (size_t)atoi(optarg);
+                break;
+            case 'e':
+                switch (*optarg) {
+                    case 'b':
+                    case 'B':
+                        little_endian = 0;
+                        break;
+                    case 'l':
+                    case 'L':
+                        little_endian = 1;
+                        break;
+                    default:
+                        fprintf(stderr, "Invalid endianness\n");
+                        exit(2);
+                        break;
+                }
                 break;
             case 'r':
                 rom_file = strdup(optarg);
@@ -83,11 +99,18 @@ int main(int argc, char **argv) {
         exit(2);
     }
 
+    struct sigaction action = { .sa_handler = cpu_dump, .sa_flags = 0 };
+    if (sigaction(SIGABRT, &action, NULL) < 0 || sigaction(SIGINT, &action, NULL) < 0) {
+        perror("sigaction");
+        exit(2);
+    }
+
     cpu_dump(0);
 
     while (!cpu_halt()) {
         clock();
         cpu_dump(0);
+        sleep(1);
     }
 
     return 0;

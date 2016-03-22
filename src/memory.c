@@ -1,15 +1,15 @@
 #include "memory.h"
 
+#include "cpu_state.h"
+
 #include <assert.h>
-#include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 
 static word_t *mem = NULL;
 static size_t memsize = 0;
 
 static inline address_t real_address(address_t address);
-static inline word_t reverse_endianness(word_t value);
+static inline word_t handle_endianness(word_t value);
 
 void init_memory(size_t bits) {
     if (mem != NULL) {
@@ -24,8 +24,9 @@ void init_memory(size_t bits) {
 }
 
 void flash_memory(char const *data, size_t count) {
-    assert(mem);
-    assert(memsize > 0);
+    if (mem == NULL) {
+        ABORT_WITH_MSG("memory not initialized");
+    }
 
     count = count > memsize ? memsize : count;
 
@@ -33,10 +34,11 @@ void flash_memory(char const *data, size_t count) {
 }
 
 word_t memory_read(address_t address) {
-    assert(mem != NULL && "memory not initialized!");
+    if (mem == NULL) {
+        ABORT_WITH_MSG("memory not initialized");
+    }
 
-    // FIXME: ROM comes in big endian...
-    word_t data = reverse_endianness(mem[real_address(address)]);
+    word_t data = handle_endianness(mem[real_address(address)]);
 
     return data;
 }
@@ -48,8 +50,7 @@ void memory_write(address_t address, word_t data_in) {
     if (address == STDOUT_MMIO) {
         printf("%c", (char)data_in);
     } else {
-        // FIXME: ROM comes in big endian...
-        mem[real_address(address)] = reverse_endianness(data_in);
+        mem[real_address(address)] = handle_endianness(data_in);
     }
 }
 
@@ -61,16 +62,20 @@ static inline address_t real_address(address_t address) {
 
     // We only allow aligned accesses, so mask away bits
     // that would cause misalignments
-    ret >>= log2i(sizeof(word_t));
+    ret /= sizeof(word_t);
 
     return ret;
 }
 
-static inline word_t reverse_endianness(word_t value) {
+static inline word_t handle_endianness(word_t value) {
     assert(sizeof(word_t) == 4);
 
-    return (value >>  0u & 0xFFu) << 24u |
-           (value >>  8u & 0xFFu) << 16u |
-           (value >> 16u & 0xFFu) <<  8u |
-           (value >> 24u & 0xFFu) <<  0u;
+    if (little_endian) {
+        return value;
+    } else {
+        return (value >> 0u & 0xFFu) << 24u |
+               (value >> 8u & 0xFFu) << 16u |
+               (value >> 16u & 0xFFu) << 8u |
+               (value >> 24u & 0xFFu) << 0u;
+    }
 }

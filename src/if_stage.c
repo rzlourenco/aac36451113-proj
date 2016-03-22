@@ -8,16 +8,13 @@ struct if_state_t if_state;
 
 void if_stage(void) {
     if (cpu_state.if_stalls > 0) {
-        if (cpu_state.delayed) {
-            cpu_state.delayed = 0;
-        } else {
-            cpu_state.id_enable = 0;
+        cpu_state.if_stalls--;
+
+        if (!cpu_state.has_delayed_branch) {
+            cpu_state.has_delayed_branch = 0;
             return;
         }
     }
-
-    // Clear ID state
-    id_state = (struct id_state_t){ 0 };
 
     switch (if_state.pc_sel) {
         case IF_SELPC_NEXT:
@@ -27,7 +24,8 @@ void if_stage(void) {
             cpu_state.pc = if_state.branch_pc;
             break;
         default:
-            ABORT_MSG("unknown IF_SELPC value");
+            ABORT_WITH_MSG("unknown IF_SELPC value");
+
     }
 
     word_t instruction = memory_read(cpu_state.pc);
@@ -44,5 +42,5 @@ void if_stage(void) {
     if_state.next_pc = cpu_state.pc + (address_t) sizeof(address_t);
     if_state.pc_sel = IF_SELPC_NEXT;
 
-    cpu_state.id_enable = 1;
+    cpu_state.id_enable = !cpu_state.id_stall;
 }
