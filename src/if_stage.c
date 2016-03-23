@@ -12,6 +12,7 @@ void if_stage(void) {
 
         if (!cpu_state.has_delayed_branch) {
             cpu_state.has_delayed_branch = 0;
+        } else {
             return;
         }
     }
@@ -41,6 +42,4 @@ void if_stage(void) {
 
     if_state.next_pc = cpu_state.pc + (address_t) sizeof(address_t);
     if_state.pc_sel = IF_SELPC_NEXT;
-
-    cpu_state.id_enable = !cpu_state.id_stall;
 }
