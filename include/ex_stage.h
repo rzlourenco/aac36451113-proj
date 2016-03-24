@@ -8,7 +8,8 @@ struct ex_state_t {
     word_t op_a, op_b, op_c;
     int alu_control, select_op_a;
     int carry_write_enable;
-    int cmp_unsigned;
+    int is_signed;
+    int use_carry;
 
     int branch_enable;
     int branch_cond;
@@ -16,6 +17,7 @@ struct ex_state_t {
     address_t wb_dest_register;
     int wb_select_data;
     int wb_write_enable;
+    word_t wb_data;
 
     int mem_access;
     int mem_mode;

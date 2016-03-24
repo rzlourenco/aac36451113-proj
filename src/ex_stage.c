@@ -23,6 +23,10 @@ static word_t alu_cmp(word_t op_a, word_t op_b, int unsigned_compare);
 
 static word_t alu_or(word_t op_a, word_t op_b);
 
+static word_t alu_sl(word_t op_a, word_t op_b);
+
+static word_t alu_sr(word_t op_a, word_t op_b);
+
 static word_t alu_xor(word_t op_a, word_t op_b);
 
 void ex_stage(void) {
@@ -40,7 +44,7 @@ void ex_stage(void) {
 
     switch (ex_state.alu_control) {
         case EX_ALU_CMP:
-            result = alu_cmp(ex_state.op_a, ex_state.op_b, ex_state.cmp_unsigned);
+            result = alu_cmp(ex_state.op_a, ex_state.op_b);
             break;
         case EX_ALU_ADD:
             result = alu_add(ex_state.op_a, ex_state.op_b, ex_state.op_c);
@@ -53,6 +57,12 @@ void ex_stage(void) {
             break;
         case EX_ALU_XOR:
             result = alu_xor(ex_state.op_a, ex_state.op_b);
+            break;
+        case EX_ALU_SHIFT_LEFT:
+            result = alu_sl(ex_state.op_a, ex_state.op_b);
+            break;
+        case EX_ALU_SHIFT_RIGHT:
+            result = alu_sr(ex_state.op_a, ex_state.op_b);
             break;
         default:
             ABORT_WITH_MSG("Unknown ALU operation");
@@ -100,11 +110,11 @@ static word_t alu_and(word_t op_a, word_t op_b) {
     return result;
 }
 
-static word_t alu_cmp(word_t op_a, word_t op_b, int unsigned_compare) {
+static word_t alu_cmp(word_t op_a, word_t op_b) {
     word_t result = alu_add(op_a, ~op_b, 1);
 
-    if (unsigned_compare) {
-        if (op_a < op_b) {
+    if (ex_state.is_signed) {
+        if ((s_word_t) op_a < (s_word_t) op_b) {
             result |= 1u << 31u;
         }
         else {
@@ -112,7 +122,7 @@ static word_t alu_cmp(word_t op_a, word_t op_b, int unsigned_compare) {
         }
     }
     else {
-        if ((s_word_t) op_a < (s_word_t) op_b) {
+        if (op_a < op_b) {
             result |= 1u << 31u;
         }
         else {
@@ -125,6 +135,43 @@ static word_t alu_cmp(word_t op_a, word_t op_b, int unsigned_compare) {
 
 static word_t alu_or(word_t op_a, word_t op_b) {
     word_t result = op_a | op_b;
+
+    return result;
+}
+
+static word_t alu_sl(word_t op_a, word_t op_b) {
+    word_t result;
+
+    // Mask away extra bits
+    op_b = op_b & 0x1F;
+    result = op_a << op_b;
+
+    return result;
+}
+
+static word_t alu_sr(word_t op_a, word_t op_b) {
+    word_t result;
+
+    // Mask away extra bits
+    op_b = op_b & 0x1F;
+
+    if (ex_state.use_carry && ex_state.is_signed) {
+        ABORT_WITH_MSG("cannot do arithmetic shift right with carry");
+    }
+
+    word_t sign = 0;
+    if (ex_state.use_carry)
+        sign = msr.c;
+    if (ex_state.is_signed)
+        sign = (s_word_t)op_a < 0;
+
+    word_t sign_mask = (sign << op_b) - 1;
+    sign_mask <<= (32 - op_b);
+
+    result = op_a >> op_b;
+    result |= sign_mask;
+
+    flags.carry = op_a & ((1 << op_b) - 1);
 
     return result;
 }

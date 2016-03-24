@@ -59,13 +59,12 @@ void id_stage(void) {
         case 0x0E: // ADDIKC
         case 0x0F: // RSUBIKC
         {
+            register_mark_used(rd);
+
             if (register_in_use(ra) || (!is_imm_instr && register_in_use(rb))) {
-                register_mark_used(rd);
                 cpu_state.id_stall = 1;
                 return;
             }
-
-            register_mark_used(rd);
 
             ex_state.wb_dest_register = rd;
             ex_state.wb_write_enable = 1;
@@ -93,7 +92,7 @@ void id_stage(void) {
             if (opcode == 0x05) {
                 ASSERT_OR_ILLEGAL(function == 1 || function == 3);
 
-                ex_state.cmp_unsigned = function == 3;
+                ex_state.is_signed = function == 1;
                 ex_state.alu_control = EX_ALU_CMP;
             }
 
@@ -110,12 +109,59 @@ void id_stage(void) {
         case 0x11: // BSRA, BSLA, BSRL, BSLL
         case 0x19: // BSRAI, BSLAI, BSRLI, BSLLI
         {
+            register_mark_used(rd);
+
+            if (register_in_use(ra) || (!is_imm_instr && register_in_use(rb))) {
+                cpu_state.id_stall = 1;
+                return;
+            }
+
             ABORT_WITH_MSG("not implemented");
             break;
         }
 
         case 0x24: // SRA, SRC, SRL, SEXT8, SEXT16
         {
+            register_mark_used(rd);
+
+            if (register_in_use(ra)) {
+                cpu_state.id_stall = 1;
+                return;
+            }
+
+            ex_state.wb_write_enable = 1;
+            ex_state.wb_dest_register = rd;
+            ex_state.wb_select_data = WB_SEL_EX;
+
+            ex_state.op_a = read_register(ra);
+            ex_state.op_b = 1;
+            ex_state.alu_control = EX_ALU_SHIFT_RIGHT;
+
+            switch (function) {
+            case 0x001: // SRA
+                ex_state.is_signed = 1;
+                ex_state.carry_write_enable = 1;
+                break;
+            case 0x021: // SRC
+                ex_state.use_carry = 1;
+                ex_state.carry_write_enable = 1;
+                break;
+            case 0x041: // SRL
+                ex_state.carry_write_enable = 1;
+                break;
+            case 0x060: // SEXT8
+                ex_state.wb_select_data = WB_SEL_WB;
+                ex_state.data = SIGN_EXTEND(read_register(ra), 8);
+                break;
+            case 0x061: // SEXT16
+                ex_state.wb_select_data = WB_SEL_WB;
+                ex_state.data = SIGN_EXTEND(read_register(ra), 16);
+                break;
+            default:
+                ASSERT_OR_ILLEGAL(0);
+                break;
+            }
+
             ABORT_WITH_MSG("not implemented");
             break;
         }
@@ -132,13 +178,12 @@ void id_stage(void) {
         case 0x2A: // XORI
         case 0x2B: // ANDNI
         {
+            register_mark_used(rd);
+
             if (register_in_use(ra) || (!is_imm_instr && register_in_use(rb))) {
-                register_mark_used(rd);
                 cpu_state.id_stall = 1;
                 return;
             }
-
-            register_mark_used(rd);
 
             ex_state.wb_dest_register = rd;
             ex_state.wb_select_data = WB_SEL_EX;
@@ -191,13 +236,12 @@ void id_stage(void) {
         case 0x39: // LHUI
         case 0x3A: // LWI
         {
+            register_mark_used(rd);
+
             if (register_in_use(ra) || (!is_imm_instr && register_in_use(rb))) {
-                register_mark_used(rd);
                 cpu_state.id_stall = 1;
                 return;
             }
-
-            register_mark_used(rd);
 
             ex_state.mem_access = 1;
             switch (opcode & 0x03) {
@@ -281,11 +325,11 @@ void id_stage(void) {
 
         case 0x2E: // BRI, BRLI, BRAI, BRALI, BRID, BRLID, BRAID, BRALID
         {
-            if (!is_imm_instr && register_in_use(rb)) {
-                if (br_link) {
-                    register_mark_used(rd);
-                }
+            if (br_link) {
+                register_mark_used(rd);
+            }
 
+            if (!is_imm_instr && register_in_use(rb)) {
                 cpu_state.id_stall = 1;
                 return;
             }
@@ -297,8 +341,6 @@ void id_stage(void) {
             ex_state.alu_control = EX_ALU_ADD;
 
             if (br_link) {
-                register_mark_used(rd);
-
                 ex_state.wb_dest_register = rd;
                 ex_state.wb_select_data = WB_SEL_PC;
                 ex_state.wb_write_enable = 1;
