@@ -105,13 +105,13 @@ int main(int argc, char **argv) {
         exit(2);
     }
 
-    cpu_dump(0);
-
     while (!cpu_halt()) {
-        clock();
         cpu_dump(0);
-        sleep(1);
+        clock();
+        // (void)getchar();
     }
+
+    cpu_dump(0);
 
     return 0;
 }

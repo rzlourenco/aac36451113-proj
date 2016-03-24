@@ -18,6 +18,7 @@ struct ex_state_t {
     int wb_write_enable;
 
     int mem_access;
+    int mem_mode;
     int mem_write_enable;
     word_t mem_data;
 };
@@ -28,6 +29,8 @@ enum {
     EX_ALU_OR = 2,
     EX_ALU_AND = 3,
     EX_ALU_XOR = 4,
+    EX_ALU_SHIFT_LEFT = 5,
+    EX_ALU_SHIFT_RIGHT = 6,
 };
 
 enum {

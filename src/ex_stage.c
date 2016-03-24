@@ -36,6 +36,7 @@ void ex_stage(void) {
     mem_state.write_enable = ex_state.mem_write_enable;
     mem_state.memory_access = ex_state.mem_access;
     mem_state.data = ex_state.mem_data;
+    mem_state.mode = ex_state.mem_mode;
 
     switch (ex_state.alu_control) {
         case EX_ALU_CMP:
@@ -79,7 +80,7 @@ void ex_stage(void) {
                  (ex_state.branch_cond == EX_COND_GE && (flags.zero || !flags.negative))) {
             // XXX: Needs an additional adder besides the one(s) in the ALU
             if_state.branch_pc = ex_state.pc + ex_state.op_c;
-            if_state.pc_sel = IF_SELPC_NEXT;
+            if_state.pc_sel = IF_SELPC_BRANCH;
         }
     }
 }

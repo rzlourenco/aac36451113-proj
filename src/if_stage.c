@@ -7,10 +7,12 @@
 struct if_state_t if_state;
 
 void if_stage(void) {
-    if (cpu_state.if_stalls > 0) {
-        cpu_state.if_stalls--;
+    if (cpu_state.id_stall) {
+        return;
+    }
 
-        if (!cpu_state.has_delayed_branch) {
+    if (cpu_state.if_stalls > 0) {
+        if (cpu_state.has_delayed_branch) {
             cpu_state.has_delayed_branch = 0;
         } else {
             return;
@@ -26,7 +28,6 @@ void if_stage(void) {
             break;
         default:
             ABORT_WITH_MSG("unknown IF_SELPC value");
-
     }
 
     word_t instruction = memory_read(cpu_state.pc);

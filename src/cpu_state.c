@@ -12,8 +12,6 @@ struct msr_t msr;
 h_word_t rIMM;
 int little_endian;
 
-static void cpu_control_pipeline(void);
-
 void init_cpu(void) {
     cpu_state = (struct cpu_state_t){ 0 };
 
@@ -44,15 +42,24 @@ void init_cpu(void) {
 }
 
 int cpu_halt(void) {
-    return cpu_state.halt && !cpu_state.if_enable && !cpu_state.id_enable && !cpu_state.ex_enable &&
-           !cpu_state.mem_enable && !cpu_state.wb_enable;
+    return cpu_state.halt || (!cpu_state.if_enable && !cpu_state.id_enable && !cpu_state.ex_enable &&
+           !cpu_state.mem_enable && !cpu_state.wb_enable);
 }
 
 void clock(void) {
+    // Advance register-in-use state
+    register_clock();
+
+    if (cpu_state.if_stalls > 0) {
+        cpu_state.if_stalls -= 1;
+    }
+
     if (cpu_state.wb_enable) {
         cpu_state.wb_enable = 0;
 
         wb_stage();
+
+        wb_state = (struct wb_state_t){ 0 };
     }
 
     if (cpu_state.mem_enable) {
@@ -60,6 +67,8 @@ void clock(void) {
         cpu_state.mem_enable = 0;
 
         mem_stage();
+
+        mem_state = (struct mem_state_t){ 0 };
     }
 
     if (cpu_state.ex_enable) {
@@ -67,13 +76,18 @@ void clock(void) {
         cpu_state.ex_enable = 0;
 
         ex_stage();
+
+        ex_state = (struct ex_state_t){ 0 };
     }
 
     if (cpu_state.id_enable) {
         cpu_state.ex_enable = 1;
         cpu_state.id_enable = 0;
+        cpu_state.id_stall = 0;
 
         id_stage();
+
+        id_state = (struct id_state_t){ 0 };
     }
 
     if (cpu_state.if_enable) {
@@ -81,9 +95,6 @@ void clock(void) {
 
         if_stage();
     }
-
-    // Advance register-in-use state
-    register_clock();
 
     ++cpu_state.total_cycles;
 }
@@ -108,22 +119,26 @@ void cpu_dump(int signal) {
             if_state.branch_pc,
             if_state.pc_sel);
 
-    fprintf(stderr, "\tid(%d) pc=%08x instruction=%08x\n",
+    fprintf(stderr, "\tid(%d) id_stall=%d pc=%08x instruction=%08x\n",
             cpu_state.id_enable,
+            cpu_state.id_stall,
             id_state.pc,
             id_state.instruction);
 
-    fprintf(stderr, "\tex(%d) pc=%08x\n",
+    fprintf(stderr, "\tex(%d) pc=%08x branch_enable=%d\n",
             cpu_state.ex_enable,
-            ex_state.pc);
+            ex_state.pc,
+            ex_state.branch_enable);
 
-    fprintf(stderr, "\tmem(%d) pc=%08x\n",
+    fprintf(stderr, "\tmem(%d) pc=%08x write_enable=%d\n",
             cpu_state.mem_enable,
-            mem_state.pc);
+            mem_state.pc,
+            mem_state.write_enable);
 
-    fprintf(stderr, "\twb(%d) pc=%08x\n",
+    fprintf(stderr, "\twb(%d) pc=%08x write_enable=%d\n",
             cpu_state.wb_enable,
-            wb_state.pc);
+            wb_state.pc,
+            wb_state.write_enable);
 
     fprintf(stderr, "\n");
     register_dump();
@@ -132,4 +147,6 @@ void cpu_dump(int signal) {
     if (signal) {
         exit(signal);
     }
+
+    fflush(stderr);
 }

@@ -3,10 +3,11 @@
 #include "cpu_state.h"
 #include "ex_stage.h"
 #include "if_stage.h"
+#include "wb_stage.h"
+#include "mem_stage.h"
 #include "register.h"
 
 #include <assert.h>
-#include <wb_stage.h>
 
 #define ASSERT_OR_ILLEGAL(COND) do { if (!(COND)) goto invalid_instruction; } while (0)
 
@@ -59,6 +60,8 @@ void id_stage(void) {
         case 0x0F: // RSUBIKC
         {
             if (register_in_use(ra) || (!is_imm_instr && register_in_use(rb))) {
+                register_mark_used(rd);
+                cpu_state.id_stall = 1;
                 return;
             }
 
@@ -130,6 +133,8 @@ void id_stage(void) {
         case 0x2B: // ANDNI
         {
             if (register_in_use(ra) || (!is_imm_instr && register_in_use(rb))) {
+                register_mark_used(rd);
+                cpu_state.id_stall = 1;
                 return;
             }
 
@@ -177,21 +182,17 @@ void id_stage(void) {
         }
 
         case 0x30: // LBU
-        case 0x38: // LBUI
-        {
-            ABORT_WITH_MSG("not implemented");
-            break;
-        }
-
         case 0x31: // LHU
-        case 0x39: // LHUI
-            ABORT_WITH_MSG("not implemented");
-            break;
-
         case 0x32: // LW
+            ASSERT_OR_ILLEGAL(function == 0);
+            // fallthrough
+
+        case 0x38: // LBUI
+        case 0x39: // LHUI
         case 0x3A: // LWI
         {
             if (register_in_use(ra) || (!is_imm_instr && register_in_use(rb))) {
+                register_mark_used(rd);
                 cpu_state.id_stall = 1;
                 return;
             }
@@ -199,10 +200,25 @@ void id_stage(void) {
             register_mark_used(rd);
 
             ex_state.mem_access = 1;
+            switch (opcode & 0x03) {
+                case 0:
+                    ex_state.mem_mode = MEM_BYTE;
+                    break;
+                case 1:
+                    ex_state.mem_mode = MEM_HALF;
+                    break;
+                case 2:
+                    ex_state.mem_mode = MEM_WORD;
+                    break;
+                default:
+                    ABORT_WITH_MSG("should never happen!");
+            }
 
             ex_state.wb_dest_register = rd;
             ex_state.wb_select_data = WB_SEL_MEM;
             ex_state.wb_write_enable = 1;
+
+            ex_state.alu_control = EX_ALU_ADD;
 
             ex_state.op_a = register_read(ra);
             ex_state.op_b = is_imm_instr ? extend_immediate(imm16) : register_read(rb);
@@ -212,18 +228,13 @@ void id_stage(void) {
         }
 
         case 0x34: // SB
-        case 0x3C: // SBI
-            ABORT_WITH_MSG("not implemented");
-            msr.i = 0;
-            break;
-
         case 0x35: // SH
-        case 0x3D: // SHI
-            ABORT_WITH_MSG("not implemented");
-            msr.i = 0;
-            break;
-
         case 0x36: // SW
+            ASSERT_OR_ILLEGAL(function == 0);
+            // fallthrough
+
+        case 0x3C: // SBI
+        case 0x3D: // SHI
         case 0x3E: // SWI
         {
             if (register_in_use(rd) || register_in_use(ra) || (!is_imm_instr && register_in_use(rb))) {
@@ -235,12 +246,34 @@ void id_stage(void) {
             ex_state.mem_write_enable = 1;
             ex_state.mem_data = register_read(rd);
 
+            switch (opcode & 0x07) {
+                case 4:
+                    ex_state.mem_mode = MEM_BYTE;
+                    break;
+                case 5:
+                    ex_state.mem_mode = MEM_HALF;
+                    break;
+                case 6:
+                    ex_state.mem_mode = MEM_WORD;
+                    break;
+                default:
+                    ABORT_WITH_MSG("should never happen!");
+            }
+
+            ex_state.alu_control = EX_ALU_ADD;
+
             ex_state.op_a = register_read(ra);
             ex_state.op_b = is_imm_instr ? extend_immediate(imm16) : register_read(rb);
 
             msr.i = 0;
             break;
         }
+
+        case 0x25: // MTS
+            fprintf(stderr, "[warn] mts instruction is not and won't be implemented\n");
+
+            msr.i = 0;
+            break;
 
         case 0x26: // BR,  BRL,  BRA,  BRAL,  BRD,  BRLD,  BRAD,  BRALD
             ASSERT_OR_ILLEGAL(function == 0);
@@ -249,6 +282,10 @@ void id_stage(void) {
         case 0x2E: // BRI, BRLI, BRAI, BRALI, BRID, BRLID, BRAID, BRALID
         {
             if (!is_imm_instr && register_in_use(rb)) {
+                if (br_link) {
+                    register_mark_used(rd);
+                }
+
                 cpu_state.id_stall = 1;
                 return;
             }
@@ -269,7 +306,6 @@ void id_stage(void) {
 
             if (br_delay) {
                 cpu_state.has_delayed_branch = 1;
-                cpu_state.if_stalls = 2; // XXX: is this necessary?
             }
 
             ex_state.op_a = br_absolute ? 0 : id_state.pc;
@@ -300,7 +336,6 @@ void id_stage(void) {
 
             if (br_cond_delay) {
                 cpu_state.has_delayed_branch = 1;
-                cpu_state.if_stalls = 2;
             }
 
             ex_state.op_a = register_read(rd);
@@ -313,7 +348,24 @@ void id_stage(void) {
 
         case 0x2D: // RTSD
         {
-            ABORT_WITH_MSG("not implemented");
+            ASSERT_OR_ILLEGAL(BITS(bits, 21, 25) == 0x10);
+
+            if (register_in_use(ra)) {
+                cpu_state.id_stall = 1;
+                return;
+            }
+
+            cpu_state.if_stalls = 3;
+
+            ex_state.branch_enable = 1;
+            ex_state.branch_cond = EX_COND_ALWAYS;
+            ex_state.alu_control = EX_ALU_ADD;
+
+            cpu_state.has_delayed_branch = 1;
+
+            ex_state.op_a = register_read(ra);
+            ex_state.op_b = extend_immediate(imm16);
+
             msr.i = 0;
             break;
         }

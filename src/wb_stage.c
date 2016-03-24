@@ -22,7 +22,7 @@ void wb_stage(void) {
             ABORT_WITH_MSG("unknown WB_SEL");
     }
 
-    if (wb_state.write_enabled) {
+    if (wb_state.write_enable) {
         register_write(wb_state.dest_address, data);
     }
 }

@@ -1,8 +1,15 @@
 # Changes by Nuno Neves
 # Makefile by Takar
 
-SRCS := $(wildcard *.c)
-CC   := mb-gcc
+SRCS := $(wildcard *.c) $(wildcard *.s)
+SRCS := $(SRCS:%.c=%)
+SRCS := $(SRCS:%.s=%)
+
+CC      := mb-gcc
+AS      := mb-as
+LD      := mb-ld
+OBJCOPY := mb-objcopy
+OBJDUMP := mb-objdump
 
 #Xilinx Compiler flags (XILFLAGS): 
 #-mxl-soft-div -> Use Soft Divider
@@ -14,19 +21,22 @@ CFLAGS   := -g -ansi -pedantic -Ofast
 LDFLAGS  := -Wl,-defsym,_STACK_SIZE=0x4000,-defsym,_HEAP_SIZE=0x4000
 
 .PHONY: all
-all: $(SRCS:%.c=%.elf) $(SRCS:%.c=%.bin) $(SRCS:%.c=%.dump)
+all: $(SRCS:%=%.elf) $(SRCS:%=%.bin) $(SRCS:%=%.dump)
 
 .PHONY: clean
 clean:
 	rm -f *.bin *.dump *.elf
 
+%.elf: %.s
+	$(CC) -nostdlib $(LDFLAGS) -Wl,-Ttext=0 $< -o $@
+
 %.elf: %.c
 	$(CC) $(XILFLAGS) $(CFLAGS) $(LDFLAGS) $< -o $@
 
 %.bin: %.elf
-	mb-objcopy -O binary $< $@
+	$(OBJCOPY) -O binary $< $@
 
 %.dump: %.elf
-	mb-objdump -DSCz $< > $@
+	$(OBJDUMP) -DSCz $< > $@
 
 

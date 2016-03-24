@@ -9,7 +9,7 @@ struct wb_state_t {
 
     address_t dest_address;
     int select_data;
-    int write_enabled;
+    int write_enable;
 };
 
 enum {
