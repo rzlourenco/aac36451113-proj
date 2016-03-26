@@ -30,7 +30,20 @@ struct msr_t {
 extern struct cpu_state_t cpu_state;
 extern struct msr_t msr;
 extern uint16_t rIMM;
+
 extern int little_endian;
+
+extern int debug;
+
+extern int has_breakpoint;
+extern address_t breakpoint;
+
+extern int has_mem_trace;
+extern address_t mem_trace;
+
+extern address_t trace_register;
+
+extern FILE *trace_functions;
 
 void init_cpu(void);
 int cpu_halt(void);

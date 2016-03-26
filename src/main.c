@@ -10,9 +10,19 @@
 #include <unistd.h>
 
 void usage(char const *argv0) {
-    fprintf(stderr, "Usage: %s [ -b address_bits ] [ -e (b|l) ] -r rom_file\n", argv0);
-    fprintf(stderr, "\n");
-    fprintf(stderr, " -e (b|l)\tAssume big (b) or little (l) endianness. Little endian by default.\n");
+    fprintf(stderr, "Usage: %s [options] rom_file\n", argv0);
+    fprintf(stderr,
+        "Options:\n"
+        " -a <membits>  Address size in bits.\n"
+        "               Defaults to 20 bits.\n"
+        " -b <address>  Breakpoint. Enter debug mode when PC = <address>.\n"
+        " -d            Enter debug mode.\n"
+        " -e {b,l}      Assume big (b) or little (l) endianness.\n"
+        "               Defaults to little endian.\n"
+        " -f            Trace function calls (br[a][i]l[d] + rtsd).\n"
+        " -m <address>  Trace writes to address <address>.\n"
+        " -r <reg>      Trace writes to register <reg>.\n"
+    );
     exit(1);
 }
 
@@ -20,14 +30,34 @@ int main(int argc, char **argv) {
     assert(sizeof(struct msr_t) == sizeof(word_t));
 
     int opt;
-    size_t mem_bits = 16;
+    size_t mem_bits = 20;
     char *rom_file = NULL;
+
     little_endian = 1;
 
-    while ((opt = getopt(argc, argv, "b:e:r:")) != -1) {
+    debug = 0;
+
+    has_breakpoint = 0;
+    breakpoint = 0;
+
+    has_mem_trace = 0;
+    mem_trace = 0;
+
+    trace_register = 0;
+
+    trace_functions = NULL;
+
+    while ((opt = getopt(argc, argv, "+b:de:fm:r:a:")) != -1) {
         switch (opt) {
+            case 'a':
+                mem_bits = (size_t)strtoul(optarg, NULL, 10);
+                break;
             case 'b':
-                mem_bits = (size_t)atoi(optarg);
+                has_breakpoint = 1;
+                breakpoint = (word_t)strtoull(optarg, NULL, 16);
+                break;
+            case 'd':
+                debug = 1;
                 break;
             case 'e':
                 switch (*optarg) {
@@ -45,17 +75,33 @@ int main(int argc, char **argv) {
                         break;
                 }
                 break;
+            case 'f':
+                trace_functions = fopen("call_stack", "w");
+                assert(trace_functions);
+                break;
+            case 'm':
+                has_mem_trace = 1;
+                mem_trace = (word_t)strtoul(optarg, NULL, 16);
+                break;
             case 'r':
-                rom_file = strdup(optarg);
+                trace_register = (address_t)strtoul(optarg, NULL, 10);
+                if (trace_register >= 32) {
+                    fprintf(stderr, "Invalid register\n");
+                    exit(2);
+                    break;
+                }
                 break;
             default:
                 usage(argv[0]);
         }
     }
 
-    if (rom_file == NULL) {
+    if (optind >= argc) {
+        fprintf(stderr, "ROM not specified!\n");
         usage(argv[0]);
     }
+
+    rom_file = argv[optind];
 
     if (mem_bits < 10 || mem_bits > 32) {
         fprintf(stderr, "Invalid address bits. Valid range: [10, 32]\n");
@@ -67,8 +113,6 @@ int main(int argc, char **argv) {
         perror("open");
         exit(2);
     }
-
-    free(rom_file);
 
     struct stat rom_stat;
     if (fstat(rom_fd, &rom_stat) < 0) {
@@ -90,6 +134,11 @@ int main(int argc, char **argv) {
         }
     }
 
+    if (rom_stat.st_size >= (1<<mem_bits)) {
+        fprintf(stderr, "Address size not enough for ROM! Please choose a bigger address size.\n");
+        exit(2);
+    }
+
     init_cpu();
     init_memory(mem_bits);
     flash_memory(rom, (size_t)rom_stat.st_size);
@@ -105,13 +154,25 @@ int main(int argc, char **argv) {
         exit(2);
     }
 
+    if (trace_functions) {
+        fprintf(trace_functions, "%08x: %08x\n", cpu_state.pc, cpu_state.pc);
+    }
+
     while (!cpu_halt()) {
-        cpu_dump(0);
         clock();
-        // (void)getchar();
+        cpu_dump(0);
+
+        if (debug) {
+            (void) getchar();
+        }
     }
 
     cpu_dump(0);
+
+    if (trace_functions) {
+        fflush(trace_functions);
+        fclose(trace_functions);
+    }
 
     return 0;
 }

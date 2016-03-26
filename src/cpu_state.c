@@ -9,8 +9,21 @@
 
 struct cpu_state_t cpu_state;
 struct msr_t msr;
-h_word_t rIMM;
+uint16_t rIMM;
+
 int little_endian;
+
+int debug;
+
+int has_breakpoint;
+address_t breakpoint;
+
+address_t trace_register;
+
+int has_mem_trace;
+address_t mem_trace;
+
+FILE *trace_functions;
 
 void init_cpu(void) {
     cpu_state = (struct cpu_state_t){ 0 };
@@ -47,9 +60,6 @@ int cpu_halt(void) {
 }
 
 void clock(void) {
-    // Advance register-in-use state
-    register_clock();
-
     if (cpu_state.if_stalls > 0) {
         cpu_state.if_stalls -= 1;
     }
@@ -87,7 +97,10 @@ void clock(void) {
 
         id_stage();
 
-        id_state = (struct id_state_t){ 0 };
+        // Save instruction if we must wait for operand fetch
+        if (!cpu_state.id_stall) {
+            id_state = (struct id_state_t){ 0 };
+        }
     }
 
     if (cpu_state.if_enable) {
@@ -96,10 +109,16 @@ void clock(void) {
         if_stage();
     }
 
+    // Advance register-in-use state
+    register_clock();
+
     ++cpu_state.total_cycles;
 }
 
 void cpu_dump(int signal) {
+    if (!debug && signal == 0)
+        return;
+
     fprintf(stderr, "\n");
 
     fprintf(stderr, "\tAfter %zu clock cycle(s)\n", cpu_state.total_cycles);
@@ -130,15 +149,24 @@ void cpu_dump(int signal) {
             ex_state.pc,
             ex_state.branch_enable);
 
-    fprintf(stderr, "\tmem(%d) pc=%08x write_enable=%d\n",
+    fprintf(stderr, "\tmem(%d) pc=%08x write_enable=%d address=%08x data=%08x\n",
             cpu_state.mem_enable,
             mem_state.pc,
-            mem_state.write_enable);
+            mem_state.write_enable,
+            mem_state.alu_result,
+            mem_state.data);
 
-    fprintf(stderr, "\twb(%d) pc=%08x write_enable=%d\n",
+    fprintf(stderr, "\twb(%d) pc=%08x write_enable=%d r%d<-%d(%08x %08x %08x %08x)\n",
             cpu_state.wb_enable,
             wb_state.pc,
-            wb_state.write_enable);
+            wb_state.write_enable,
+            wb_state.dest_register,
+            wb_state.select_data,
+            wb_state.pc,
+            wb_state.alu_result,
+            wb_state.memory_out,
+            wb_state.data
+    );
 
     fprintf(stderr, "\n");
     register_dump();

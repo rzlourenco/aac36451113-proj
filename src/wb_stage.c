@@ -18,11 +18,17 @@ void wb_stage(void) {
         case WB_SEL_MEM:
             data = wb_state.memory_out;
             break;
+        case WB_SEL_WB:
+            data = wb_state.data;
+            break;
         default:
             ABORT_WITH_MSG("unknown WB_SEL");
     }
 
     if (wb_state.write_enable) {
-        register_write(wb_state.dest_address, data);
+        if (trace_register && trace_register == wb_state.dest_register) {
+            fprintf(stderr, "%08x: r%u <- %08x\n", wb_state.pc, wb_state.dest_register, data);
+        }
+        register_write(wb_state.dest_register, data);
     }
 }

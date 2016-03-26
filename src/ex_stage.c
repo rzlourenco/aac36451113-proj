@@ -19,7 +19,7 @@ static word_t alu_add(word_t op_a, word_t op_b, word_t op_c);
 
 static word_t alu_and(word_t op_a, word_t op_b);
 
-static word_t alu_cmp(word_t op_a, word_t op_b, int unsigned_compare);
+static word_t alu_cmp(word_t op_a, word_t op_b);
 
 static word_t alu_or(word_t op_a, word_t op_b);
 
@@ -37,6 +37,7 @@ void ex_stage(void) {
     mem_state.wb_dest_register = ex_state.wb_dest_register;
     mem_state.wb_write_enable = ex_state.wb_write_enable;
     mem_state.wb_select_data = ex_state.wb_select_data;
+    mem_state.wb_data = ex_state.wb_data;
     mem_state.write_enable = ex_state.mem_write_enable;
     mem_state.memory_access = ex_state.mem_access;
     mem_state.data = ex_state.mem_data;
@@ -70,7 +71,7 @@ void ex_stage(void) {
 
     mem_state.alu_result = result;
 
-    flags.negative = result & ((l_word_t) 1 << 31);
+    flags.negative = (result & 0x80000000) != 0;
     flags.zero = result == (l_word_t) 0;
 
     if (ex_state.carry_write_enable) {
@@ -89,7 +90,7 @@ void ex_stage(void) {
                  (ex_state.branch_cond == EX_COND_LE && (flags.zero || flags.negative)) ||
                  (ex_state.branch_cond == EX_COND_GE && (flags.zero || !flags.negative))) {
             // XXX: Needs an additional adder besides the one(s) in the ALU
-            if_state.branch_pc = ex_state.pc + ex_state.op_c;
+            if_state.branch_pc = (word_t)((l_word_t)ex_state.pc + (l_word_t)ex_state.op_c);
             if_state.pc_sel = IF_SELPC_BRANCH;
         }
     }
@@ -165,19 +166,19 @@ static word_t alu_sr(word_t op_a, word_t op_b) {
     if (ex_state.is_signed)
         sign = (s_word_t)op_a < 0;
 
-    word_t sign_mask = (sign << op_b) - 1;
-    sign_mask <<= (32 - op_b);
+    word_t sign_mask = sign != 0 && op_b > 0 ? (sign << op_b) - 1 : 0;
+    sign_mask <<= (31 - op_b);
 
     result = op_a >> op_b;
     result |= sign_mask;
 
-    flags.carry = op_a & ((1 << op_b) - 1);
+    flags.carry = (op_a & (((word_t)1 << op_b) - 1)) != 0;
 
     return result;
 }
 
 static word_t alu_xor(word_t op_a, word_t op_b) {
-    word_t result = op_a ^op_b;
+    word_t result = op_a ^ op_b;
 
     return result;
 }

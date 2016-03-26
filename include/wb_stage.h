@@ -8,7 +8,7 @@ struct wb_state_t {
     word_t alu_result;
     word_t data;
 
-    address_t dest_address;
+    address_t dest_register;
     int select_data;
     int write_enable;
 };

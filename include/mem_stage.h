@@ -8,7 +8,7 @@ struct mem_state_t {
     address_t wb_dest_register;
     int wb_select_data;
     int wb_write_enable;
-    word_t data;
+    word_t wb_data;
 
     word_t data;
     word_t alu_result;

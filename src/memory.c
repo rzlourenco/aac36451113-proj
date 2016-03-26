@@ -46,11 +46,14 @@ word_t memory_read(address_t address) {
 void memory_write(address_t address, word_t data_in) {
     assert(mem != NULL && "memory not initialized!");
 
+    data_in = handle_endianness(data_in);
+
     // stdout memory-mapped device
     if (address == STDOUT_MMIO) {
-        printf("%c", (char)data_in);
+        fprintf(stdout, "%c", (char)data_in);
+        fflush(stdout);
     } else {
-        mem[real_address(address)] = handle_endianness(data_in);
+        mem[real_address(address)] = data_in;
     }
 }
 

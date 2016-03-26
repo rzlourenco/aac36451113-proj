@@ -30,16 +30,20 @@ void if_stage(void) {
             ABORT_WITH_MSG("unknown IF_SELPC value");
     }
 
+    if (has_breakpoint && cpu_state.pc == breakpoint) {
+        debug = 1;
+    }
+
     word_t instruction = memory_read(cpu_state.pc);
+
+    id_state.instruction = instruction;
+    id_state.pc = cpu_state.pc;
 
     // BRI 0, an infinite loop
     if (instruction == 0xB8000000) {
         cpu_state.if_enable = 0;
         return;
     }
-
-    id_state.instruction = instruction;
-    id_state.pc = cpu_state.pc;
 
     if_state.next_pc = cpu_state.pc + (address_t) sizeof(address_t);
     if_state.pc_sel = IF_SELPC_NEXT;

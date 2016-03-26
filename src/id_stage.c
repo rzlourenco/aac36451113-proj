@@ -15,6 +15,10 @@ struct id_state_t id_state;
 
 static word_t extend_immediate(word_t imm);
 
+static unsigned int call_depth = 1;
+static void trace_call(void);
+static void trace_return(void);
+
 void id_stage(void) {
     word_t const bits = id_state.instruction;
     word_t const opcode = BITS(bits, 26, 31);
@@ -50,6 +54,9 @@ void id_stage(void) {
             // fall through
 
         case 0x05: // RSUBK/CMP/CMPU
+            ASSERT_OR_ILLEGAL(function == 0 || function == 1 || function == 3);
+            // fall through
+
         case 0x08: // ADDI
         case 0x09: // RSUBI
         case 0x0A: // ADDIC
@@ -59,10 +66,9 @@ void id_stage(void) {
         case 0x0E: // ADDIKC
         case 0x0F: // RSUBIKC
         {
-            register_mark_used(rd);
-
             if (register_in_use(ra) || (!is_imm_instr && register_in_use(rb))) {
                 cpu_state.id_stall = 1;
+                cpu_state.ex_enable = 0;
                 return;
             }
 
@@ -71,12 +77,17 @@ void id_stage(void) {
             ex_state.wb_select_data = WB_SEL_EX;
 
             ex_state.alu_control = EX_ALU_ADD;
-            ex_state.op_a = register_read(ra);
-            ex_state.op_b = is_imm_instr ? extend_immediate(imm16) : register_read(rb);
+            ex_state.op_a = is_imm_instr ? extend_immediate(imm16) : register_read(rb);
+            ex_state.op_b = register_read(ra);
             ex_state.op_c = 0;
 
-            // Subtract or compare
-            if ((opcode & 0x01) && opcode != 0x05) {
+            // We're dealing with a CMP/CMPU
+            if (opcode == 0x05 && (function == 1 || function == 3)) {
+                ex_state.is_signed = function == 1;
+                ex_state.alu_control = EX_ALU_CMP;
+            }
+            // Subtract
+            else if (opcode & 0x01) {
                 ex_state.op_b = ~ex_state.op_b;
                 ex_state.op_c = 1;
             }
@@ -88,13 +99,7 @@ void id_stage(void) {
 
             msr.i = 0;
 
-            // We're dealing with a CMP/CMPU
-            if (opcode == 0x05) {
-                ASSERT_OR_ILLEGAL(function == 1 || function == 3);
 
-                ex_state.is_signed = function == 1;
-                ex_state.alu_control = EX_ALU_CMP;
-            }
 
             break;
         }
@@ -102,30 +107,16 @@ void id_stage(void) {
         case 0x10: // MUL, MULH, MULHU, MULHSU
         case 0x18: // MULI
         {
-            ABORT_WITH_MSG("not implemented");
+            ABORT_WITH_MSG("not implemented (opcode %02x pc %08x instr %08x)", opcode, id_state.pc, id_state.instruction);
             break;
         }
 
         case 0x11: // BSRA, BSLA, BSRL, BSLL
         case 0x19: // BSRAI, BSLAI, BSRLI, BSLLI
         {
-            register_mark_used(rd);
-
             if (register_in_use(ra) || (!is_imm_instr && register_in_use(rb))) {
                 cpu_state.id_stall = 1;
-                return;
-            }
-
-            ABORT_WITH_MSG("not implemented");
-            break;
-        }
-
-        case 0x24: // SRA, SRC, SRL, SEXT8, SEXT16
-        {
-            register_mark_used(rd);
-
-            if (register_in_use(ra)) {
-                cpu_state.id_stall = 1;
+                cpu_state.ex_enable = 0;
                 return;
             }
 
@@ -133,7 +124,29 @@ void id_stage(void) {
             ex_state.wb_dest_register = rd;
             ex_state.wb_select_data = WB_SEL_EX;
 
-            ex_state.op_a = read_register(ra);
+            ex_state.op_a = register_read(ra);
+            ex_state.op_b = is_imm_instr ? imm5 : register_read(rb);
+
+            ex_state.is_signed = (function & (1<<9)) != 0;
+            ex_state.alu_control = (function & (1<<10)) ? EX_ALU_SHIFT_LEFT : EX_ALU_SHIFT_RIGHT;
+
+            msr.i = 0;
+            break;
+        }
+
+        case 0x24: // SRA, SRC, SRL, SEXT8, SEXT16
+        {
+            if (register_in_use(ra)) {
+                cpu_state.id_stall = 1;
+                cpu_state.ex_enable = 0;
+                return;
+            }
+
+            ex_state.wb_write_enable = 1;
+            ex_state.wb_dest_register = rd;
+            ex_state.wb_select_data = WB_SEL_EX;
+
+            ex_state.op_a = register_read(ra);
             ex_state.op_b = 1;
             ex_state.alu_control = EX_ALU_SHIFT_RIGHT;
 
@@ -151,18 +164,18 @@ void id_stage(void) {
                 break;
             case 0x060: // SEXT8
                 ex_state.wb_select_data = WB_SEL_WB;
-                ex_state.data = SIGN_EXTEND(read_register(ra), 8);
+                ex_state.wb_data = (word_t)sign_extend(register_read(ra), 32, 7);
                 break;
             case 0x061: // SEXT16
                 ex_state.wb_select_data = WB_SEL_WB;
-                ex_state.data = SIGN_EXTEND(read_register(ra), 16);
+                ex_state.wb_data = (word_t)sign_extend(register_read(ra), 32, 15);
                 break;
             default:
                 ASSERT_OR_ILLEGAL(0);
                 break;
             }
 
-            ABORT_WITH_MSG("not implemented");
+            msr.i = 0;
             break;
         }
 
@@ -178,10 +191,9 @@ void id_stage(void) {
         case 0x2A: // XORI
         case 0x2B: // ANDNI
         {
-            register_mark_used(rd);
-
             if (register_in_use(ra) || (!is_imm_instr && register_in_use(rb))) {
                 cpu_state.id_stall = 1;
+                cpu_state.ex_enable = 0;
                 return;
             }
 
@@ -210,7 +222,7 @@ void id_stage(void) {
             }
 
             // ANDN negates the second operand
-            if (opcode & 0x03) {
+            if (BITS(opcode, 0, 1) == 0x03) {
                 ex_state.op_b = ~ex_state.op_b;
             }
 
@@ -236,10 +248,9 @@ void id_stage(void) {
         case 0x39: // LHUI
         case 0x3A: // LWI
         {
-            register_mark_used(rd);
-
             if (register_in_use(ra) || (!is_imm_instr && register_in_use(rb))) {
                 cpu_state.id_stall = 1;
+                cpu_state.ex_enable = 0;
                 return;
             }
 
@@ -283,6 +294,7 @@ void id_stage(void) {
         {
             if (register_in_use(rd) || register_in_use(ra) || (!is_imm_instr && register_in_use(rb))) {
                 cpu_state.id_stall = 1;
+                cpu_state.ex_enable = 0;
                 return;
             }
 
@@ -314,7 +326,7 @@ void id_stage(void) {
         }
 
         case 0x25: // MTS
-            fprintf(stderr, "[warn] mts instruction is not and won't be implemented\n");
+            // fprintf(stderr, "[warn] mts instruction is not and won't be implemented\n");
 
             msr.i = 0;
             break;
@@ -325,12 +337,9 @@ void id_stage(void) {
 
         case 0x2E: // BRI, BRLI, BRAI, BRALI, BRID, BRLID, BRAID, BRALID
         {
-            if (br_link) {
-                register_mark_used(rd);
-            }
-
             if (!is_imm_instr && register_in_use(rb)) {
                 cpu_state.id_stall = 1;
+                cpu_state.ex_enable = 0;
                 return;
             }
 
@@ -340,18 +349,20 @@ void id_stage(void) {
             ex_state.branch_cond = EX_COND_ALWAYS;
             ex_state.alu_control = EX_ALU_ADD;
 
-            if (br_link) {
-                ex_state.wb_dest_register = rd;
-                ex_state.wb_select_data = WB_SEL_PC;
-                ex_state.wb_write_enable = 1;
-            }
+            ex_state.op_a = br_absolute ? 0 : id_state.pc;
+            ex_state.op_b = is_imm_instr ? extend_immediate(imm16) : register_read(rb);
 
             if (br_delay) {
                 cpu_state.has_delayed_branch = 1;
             }
 
-            ex_state.op_a = br_absolute ? 0 : id_state.pc;
-            ex_state.op_b = is_imm_instr ? extend_immediate(imm16) : register_read(rb);
+            if (br_link) {
+                ex_state.wb_dest_register = rd;
+                ex_state.wb_select_data = WB_SEL_PC;
+                ex_state.wb_write_enable = 1;
+
+                trace_call();
+            }
 
             msr.i = 0;
             break;
@@ -365,8 +376,9 @@ void id_stage(void) {
         {
             ASSERT_OR_ILLEGAL(br_cond <= 5);
 
-            if (register_in_use(rd) || (!is_imm_instr && register_in_use(rb))) {
+            if (register_in_use(ra) || (!is_imm_instr && register_in_use(rb))) {
                 cpu_state.id_stall = 1;
+                cpu_state.ex_enable = 0;
                 return;
             }
 
@@ -375,12 +387,13 @@ void id_stage(void) {
             ex_state.branch_enable = 1;
             ex_state.branch_cond = br_cond;
             ex_state.alu_control = EX_ALU_CMP;
+            ex_state.is_signed = 1;
 
             if (br_cond_delay) {
                 cpu_state.has_delayed_branch = 1;
             }
 
-            ex_state.op_a = register_read(rd);
+            ex_state.op_a = register_read(ra);
             ex_state.op_b = 0;
             ex_state.op_c = is_imm_instr ? extend_immediate(imm16) : register_read(rb);
 
@@ -394,6 +407,7 @@ void id_stage(void) {
 
             if (register_in_use(ra)) {
                 cpu_state.id_stall = 1;
+                cpu_state.ex_enable = 0;
                 return;
             }
 
@@ -408,13 +422,15 @@ void id_stage(void) {
             ex_state.op_a = register_read(ra);
             ex_state.op_b = extend_immediate(imm16);
 
+            trace_return();
+
             msr.i = 0;
             break;
         }
 
         default:
         invalid_instruction:
-            ABORT_WITH_MSG("illegal instruction");
+            ABORT_WITH_MSG("illegal instruction (opcode %02x pc %08x instr %08x)", opcode, id_state.pc, id_state.instruction);
             break;
     };
 
@@ -425,8 +441,29 @@ static word_t extend_immediate(word_t imm) {
     assert((h_word_t)imm == imm);
 
     if (msr.i) {
-        return (rIMM << 16) | imm;
+        return ((word_t)rIMM << 16) | imm;
     } else {
-        return SIGN_EXTEND(imm, 16);
+        return (word_t)sign_extend(imm, 32, 15);
     }
+}
+
+static void trace_call(void) {
+    if (!trace_functions)
+        return;
+
+    fprintf(trace_functions, "%08x:", id_state.pc);
+
+    for (unsigned int i = 0; i < call_depth; ++i) {
+        fprintf(trace_functions, "    ");
+    }
+
+    fprintf(trace_functions, "%08x\n", (word_t)((l_word_t)ex_state.op_a + (l_word_t)ex_state.op_b));
+    call_depth++;
+}
+
+static void trace_return(void) {
+    if (!trace_functions)
+        return;
+
+    call_depth--;
 }

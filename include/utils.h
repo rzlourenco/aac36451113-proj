@@ -3,11 +3,9 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdint.h>
 
 #define BITS(VALUE, LOW, HIGH) (((VALUE)>>(LOW))&((1u<<((HIGH)-(LOW)+1u))-1u))
-
-// Source: https://graphics.stanford.edu/~seander/bithacks.html
-#define SIGN_EXTEND(VALUE, BIT_COUNT) ((((VALUE)&((1u<<(BIT_COUNT))-1u))^(1u<<((BIT_COUNT)-1u)))-((1U<<((BIT_COUNT)-1u))))
 
 #define ARRAY_LENGTH(ARRAY) (sizeof(ARRAY)/sizeof((ARRAY)[0]))
 
@@ -63,4 +61,4 @@ char *strdup(char const *s);
 
 #define ABORT_WITH_MSG(...) ABORT_MSG_HELPER(__VA_ARGS__, "")
 
-int log2i(int value);
+uint64_t sign_extend(uint64_t val, uint64_t bits, uint64_t sign_bit);

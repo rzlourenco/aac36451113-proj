@@ -20,18 +20,16 @@ char *strdup(char const *s) {
 
 #endif
 
-// Source: https://graphics.stanford.edu/~seander/bithacks.html
-int log2i(int value) {
-    int const b[] = { 0x2, 0xC, 0xF0, 0xFF00, 0xFFFF0000 };
-    int const S[] = { 1, 2, 4, 8, 16 };
+uint64_t sign_extend(uint64_t val, uint64_t bits, uint64_t sign_bit) {
+    assert(bits <= 64);
+    assert(sign_bit < bits);
 
-    int result = 0;
-    for (int i = 4; i >= 0; --i) {
-        if (value & b[i]) {
-            value >>= S[i];
-            result |= S[i];
-        }
-    }
+    uint64_t value_mask = ~(uint64_t)0 >> (64 - bits);
+    val &= value_mask;
 
-    return result;
+    uint64_t sign_mask = (~(uint64_t)0 >> sign_bit) << sign_bit;
+    val |= (val & sign_mask) ? sign_mask : 0;
+    val &= value_mask;
+
+    return val;
 }
