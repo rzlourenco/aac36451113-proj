@@ -33,6 +33,10 @@ enum {
     EX_ALU_XOR = 4,
     EX_ALU_SHIFT_LEFT = 5,
     EX_ALU_SHIFT_RIGHT = 6,
+    EX_ALU_MUL = 7,
+    EX_ALU_MULH = 8,
+    EX_ALU_MULHU = 9,
+    EX_ALU_MULHSU = 10,
 };
 
 enum {

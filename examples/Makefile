@@ -16,8 +16,8 @@ OBJDUMP := mb-objdump
 #-msoft-float -> Use Soft Floating-Point
 #-mxl-barrel-shift -> Use Hardware Barrel Shifter
 #-mno-xl-soft-mul -> Use Hardware Multiplier
-XILFLAGS := -mxl-soft-mul -mxl-soft-div -mxl-barrel-shift
-CFLAGS   := -ansi -pedantic -O0 
+XILFLAGS := -mno-xl-soft-mul -mxl-soft-div -mxl-barrel-shift
+CFLAGS   := -ansi -pedantic -O3 
 LDFLAGS  := -Wl,-defsym,_STACK_SIZE=0x4000 -Wl,-defsym,_HEAP_SIZE=0x4000
 
 .PHONY: all

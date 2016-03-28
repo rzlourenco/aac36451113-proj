@@ -19,6 +19,6 @@ int main(void) {
     int i;
 
     for (i = 0; i < 10; ++i) {
-        printf("fib(%d) = %d\n", i, fib(i));
+        xil_printf("fib(%d) = %d\n", i, fib(i));
     }
 }

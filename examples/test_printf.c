@@ -18,13 +18,7 @@ int main() {
     b = a * a;
     c = log2i(b);
 
-    prints("a = ");
-    printi(a);
-    prints(", b = ");
-    printi(b);
-    prints(", c = ");
-    printi(c);
-    prints("\n");
+    xil_printf("a = %d, b = %d, c = %d\n", a, b, c);
 
     return 0;
 }

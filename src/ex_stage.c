@@ -21,6 +21,8 @@ static word_t alu_and(word_t op_a, word_t op_b);
 
 static word_t alu_cmp(word_t op_a, word_t op_b);
 
+static word_t alu_mul(word_t op_a, word_t op_b, int high, int op_a_unsigned, int op_b_unsigned);
+
 static word_t alu_or(word_t op_a, word_t op_b);
 
 static word_t alu_sl(word_t op_a, word_t op_b);
@@ -28,6 +30,7 @@ static word_t alu_sl(word_t op_a, word_t op_b);
 static word_t alu_sr(word_t op_a, word_t op_b);
 
 static word_t alu_xor(word_t op_a, word_t op_b);
+
 
 void ex_stage(void) {
     word_t result;
@@ -44,29 +47,41 @@ void ex_stage(void) {
     mem_state.mode = ex_state.mem_mode;
 
     switch (ex_state.alu_control) {
-        case EX_ALU_CMP:
-            result = alu_cmp(ex_state.op_a, ex_state.op_b);
-            break;
-        case EX_ALU_ADD:
-            result = alu_add(ex_state.op_a, ex_state.op_b, ex_state.op_c);
-            break;
-        case EX_ALU_OR:
-            result = alu_or(ex_state.op_a, ex_state.op_b);
-            break;
-        case EX_ALU_AND:
-            result = alu_and(ex_state.op_a, ex_state.op_b);
-            break;
-        case EX_ALU_XOR:
-            result = alu_xor(ex_state.op_a, ex_state.op_b);
-            break;
-        case EX_ALU_SHIFT_LEFT:
-            result = alu_sl(ex_state.op_a, ex_state.op_b);
-            break;
-        case EX_ALU_SHIFT_RIGHT:
-            result = alu_sr(ex_state.op_a, ex_state.op_b);
-            break;
-        default:
-            ABORT_WITH_MSG("Unknown ALU operation");
+    case EX_ALU_CMP:
+        result = alu_cmp(ex_state.op_a, ex_state.op_b);
+        break;
+    case EX_ALU_ADD:
+        result = alu_add(ex_state.op_a, ex_state.op_b, ex_state.op_c);
+        break;
+    case EX_ALU_OR:
+        result = alu_or(ex_state.op_a, ex_state.op_b);
+        break;
+    case EX_ALU_AND:
+        result = alu_and(ex_state.op_a, ex_state.op_b);
+        break;
+    case EX_ALU_XOR:
+        result = alu_xor(ex_state.op_a, ex_state.op_b);
+        break;
+    case EX_ALU_SHIFT_LEFT:
+        result = alu_sl(ex_state.op_a, ex_state.op_b);
+        break;
+    case EX_ALU_SHIFT_RIGHT:
+        result = alu_sr(ex_state.op_a, ex_state.op_b);
+        break;
+    case EX_ALU_MUL:
+        result = alu_mul(ex_state.op_a, ex_state.op_b, 0, 0, 0);
+        break;
+    case EX_ALU_MULH:
+        result = alu_mul(ex_state.op_a, ex_state.op_b, 1, 0, 0);
+        break;
+    case EX_ALU_MULHU:
+        result = alu_mul(ex_state.op_a, ex_state.op_b, 1, 1, 1);
+        break;
+    case EX_ALU_MULHSU:
+        result = alu_mul(ex_state.op_a, ex_state.op_b, 1, 1, 0);
+        break;
+    default:
+        ABORT_WITH_MSG("Unknown ALU operation");
     }
 
     mem_state.alu_result = result;
@@ -132,6 +147,20 @@ static word_t alu_cmp(word_t op_a, word_t op_b) {
     }
 
     return result;
+}
+
+static word_t alu_mul(word_t op_a_, word_t op_b_, int high, int op_a_unsigned, int op_b_unsigned) {
+    l_word_t result = 0;
+    l_word_t op_a = op_a_unsigned ? op_a_ : (l_word_t)(s_word_t)op_a_;
+    l_word_t op_b = op_b_unsigned ? op_b_ : (l_word_t)(s_word_t)op_b_;
+
+    result = op_a * op_b;
+
+    if (high) {
+        result >>= 32;
+    }
+
+    return (word_t)result;
 }
 
 static word_t alu_or(word_t op_a, word_t op_b) {
