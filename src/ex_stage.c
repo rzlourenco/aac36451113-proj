@@ -185,6 +185,8 @@ static word_t alu_sr(word_t op_a, word_t op_b) {
     // Mask away extra bits
     op_b = op_b & 0x1F;
 
+    result = op_a >> op_b;
+
     if (ex_state.use_carry && ex_state.is_signed) {
         ABORT_WITH_MSG("cannot do arithmetic shift right with carry");
     }
@@ -195,10 +197,7 @@ static word_t alu_sr(word_t op_a, word_t op_b) {
     if (ex_state.is_signed)
         sign = (s_word_t)op_a < 0;
 
-    word_t sign_mask = sign != 0 && op_b > 0 ? (sign << op_b) - 1 : 0;
-    sign_mask <<= (31 - op_b);
-
-    result = op_a >> op_b;
+    word_t sign_mask = sign ? ~((~0u << op_b) >> op_b) : 0;
     result |= sign_mask;
 
     flags.carry = (op_a & (((word_t)1 << op_b) - 1)) != 0;

@@ -3,4 +3,3 @@
 int main(void) {
     prints("Hello, world!\n");
 }
-

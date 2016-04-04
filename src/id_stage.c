@@ -140,6 +140,8 @@ void id_stage(void) {
                 ABORT_WITH_MSG("should never happen");
             }
         }
+
+        msr.i = 0;
         break;
     }
 

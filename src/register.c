@@ -36,21 +36,21 @@ void register_dump(void) {
                 i+0,
                 registers[i+0].data);
 
-        fprintf(stderr,   "(%d%d%d)r%-2d = 0x%08x, ",
+        fprintf(stderr, "(%d%d%d)r%-2d = 0x%08x, ",
                 registers[i+1].in_ex,
                 registers[i+1].in_mem,
                 registers[i+1].in_wb,
                 i+1,
                 registers[i+1].data);
 
-        fprintf(stderr,   "(%d%d%d)r%-2d = 0x%08x, ",
+        fprintf(stderr, "(%d%d%d)r%-2d = 0x%08x, ",
                 registers[i+2].in_ex,
                 registers[i+2].in_mem,
                 registers[i+2].in_wb,
                 i+2,
                 registers[i+2].data);
 
-        fprintf(stderr,   "(%d%d%d)r%-2d = 0x%08x\n",
+        fprintf(stderr, "(%d%d%d)r%-2d = 0x%08x\n",
                 registers[i+3].in_ex,
                 registers[i+3].in_mem,
                 registers[i+3].in_wb,
