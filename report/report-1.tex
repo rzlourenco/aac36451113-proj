@@ -1,0 +1,123 @@
+\documentclass[]{IEEEtran}
+\usepackage[utf8]{inputenc}
+\usepackage{listings}
+
+\author{Rodrigo Lourenço, ist176133, group 9}
+\title{Development of a simple RISC processor}
+
+\begin{document}
+
+
+
+\maketitle
+
+
+
+\section{Introduction}
+
+The goal for this first laboratory is to develop a functional simulator for a
+portion of the MicroBlaze Instruction Set Architecture (ISA), namely, basic
+arithmetic and logic operations, branches (delayed or otherwise), comparisons,
+loads, and stores.
+
+
+
+\section{Simulator architecture}
+
+The simulator has a 5-stage pipeline microarchitecture without forwarding. The
+driver routine (\verb|main|) repeatedly calls \verb|cpu_cycle|. The CPU halts
+when all pipeline stages are disabled (\verb|cpu_halt|). Initially, only the
+Instruction Fetch (IF) stage is enabled. The CPU starts with the Program Counter
+(PC) at zero and with zeroed memory. The driver routine is responsible for
+loading a program into memory (\verb|flash_memory|).
+
+\begin{verbatim}
+struct cpu_state_t {
+    size_t total_cycles;
+    size_t total_instructions;
+
+    address_t pc;
+
+    int halt;
+    int has_delayed_branch;
+
+    int if_stalls;
+    int id_stall;
+
+    word_t if_enable;
+    word_t id_enable;
+    word_t ex_enable;
+    word_t mem_enable;
+    word_t wb_enable;
+} cpu_state;
+
+struct msr_t {
+    word_t c : 1;
+    word_t i : 1;
+} msr;
+
+uint16_t rIMM;
+\end{verbatim}
+
+
+
+
+\subsection{Register File}
+
+\begin{verbatim}
+struct {
+    word_t data;
+    word_t in_ex : 1;
+    word_t in_mem : 1;
+    word_t in_wb : 1;
+} registers[32];
+\end{verbatim}
+
+The register file, implemented in \verb|src/register.c|, holds the value of all
+registers, and tracks their updates on the pipeline. On each clock cycle, the
+routine \verb|register_clock| is called to advance the status bits in the
+register file. Access is done through the \verb|register_read| and
+\verb|register_write| routines.
+
+
+
+\subsection{Memory}
+
+\begin{verbatim}
+word_t *mem = NULL;
+size_t memsize = 0;
+\end{verbatim}
+
+\subsection{Instruction Fetch}
+
+The IF stage (\verb|if_stage|), implemented in \verb|src/if_stage.c|, first proceeds to check if
+there's a stall (\verb|cpu_state.id_stall != 0|) in the Instruction Decode (ID)
+stage. If there is not, it checks whether it is stalled because of ongoing
+branches (\verb|cpu_state.if_stalls > 0|).
+
+
+
+\subsection{Instruction Decode}
+
+
+
+\subsection{Execute}
+
+
+
+\subsection{Memory}
+
+
+
+\subsection{Write Back}
+
+
+
+\section{Challenges}
+
+
+
+\section{Conclusion}
+
+
+\end{document}
