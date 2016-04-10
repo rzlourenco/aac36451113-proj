@@ -468,6 +468,7 @@ void id_stage(void) {
         break;
     };
 
+    cpu_state.total_instructions++;
     cpu_state.ex_enable = 1;
 }
 

@@ -174,5 +174,12 @@ int main(int argc, char **argv) {
         fclose(trace_functions);
     }
 
+    debug = 1;
+    cpu_dump(0);
+
+    fprintf(stderr, "Total cycles: %zd\n", cpu_state.total_cycles);
+    fprintf(stderr, "Total instructions: %zd\n", cpu_state.total_instructions);
+    fprintf(stderr, "IPC: %0.2f\n", (double)cpu_state.total_instructions / (double)cpu_state.total_cycles);
+
     return 0;
 }

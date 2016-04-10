@@ -17,7 +17,7 @@ OBJDUMP := mb-objdump
 #-mxl-barrel-shift -> Use Hardware Barrel Shifter
 #-mno-xl-soft-mul -> Use Hardware Multiplier
 XILFLAGS := -mno-xl-soft-mul -mxl-soft-div -mxl-barrel-shift
-CFLAGS   := -std=c99 -pedantic -O2 -fno-inline
+CFLAGS   := -std=c99 -pedantic -Ofast
 LDFLAGS  := -Wl,-defsym,_STACK_SIZE=0x4000 -Wl,-defsym,_HEAP_SIZE=0x4000
 
 .PHONY: all
