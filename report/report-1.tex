@@ -7,29 +7,26 @@
 
 \begin{document}
 
-
-
 \maketitle
-
-
 
 \section{Introduction}
 
-The goal for this first laboratory is to develop a functional simulator for a
+The goal for this first assignment is to develop a functional simulator for a
 portion of the MicroBlaze Instruction Set Architecture (ISA), namely, basic
 arithmetic and logic operations, branches (delayed or otherwise), comparisons,
 loads, and stores.
 
-
-
 \section{Simulator architecture}
 
 The simulator has a 5-stage pipeline microarchitecture without forwarding. The
-driver routine (\verb|main|) repeatedly calls \verb|cpu_cycle|. The CPU halts
-when all pipeline stages are disabled (\verb|cpu_halt|). Initially, only the
-Instruction Fetch (IF) stage is enabled. The CPU starts with the Program Counter
-(PC) at zero and with zeroed memory. The driver routine is responsible for
-loading a program into memory (\verb|flash_memory|).
+stages are, in order, Instruction Fetch (IF), Instruction Decode/Operand Fetch (ID),
+Execute (EX), Memory (MEM), and Write Back (WB). The driver routine (\verb|main|)
+repeatedly calls \verb|cpu_cycle|. The CPU halts when all pipeline stages are
+disabled (\verb|cpu_halt|). Initially, only the IF stage is enabled. The CPU
+starts with the Program Counter (PC) at zero and with zeroed memory. The driver
+routine is responsible for initializing the CPU and the memory, and for loading
+a program into memory. \verb|address_t|, \verb|instruction_t|, and \verb|word_t|
+are aliases to C's \verb|uint32_t|.
 
 \begin{verbatim}
 struct cpu_state_t {
@@ -59,7 +56,32 @@ struct msr_t {
 uint16_t rIMM;
 \end{verbatim}
 
+The PC is stored in the \verb|cpu_state| variable. There are counters for
+the number of cycles and instructions so we can calculate the instructions per
+cycle at the end. The \verb|msr| variable holds the \verb|i| (immediate) and
+\verb|c| (carry) flags. There's a \verb|rIMM| register to hold the upper 16 bits
+of an instruction with an extented immediate. There are flags to control the
+pipeline stages.
 
+On each cycle (\verb|cpu_cycle|) the CPU invokes the pipeline stages backwards.
+After executing a stage, by default it disables it, enables the next logical
+stage, and clears its state so we can be sure there is no lingering data and/or
+control that could trouble us.  The rationale is that if a stage has executed,
+then it has data and/or control for stages further in the pipeline, and we have
+no use for the old state. A stage may override the stage enable decision,
+although this was not needed in practice.
+
+(If the stages were not executed backwards then we would execute a whole
+instruction per cycle since the results would be instantly propagated to the
+following stage without waiting for the next cycle. This could be worked around,
+e.g.\ using temporary space and copying back the stages' state, but it's
+additional work and has little or no benefit.)
+
+The exception is the IF stage, which is always enabled. It disables itself after
+fetching a \verb|bri 0| instruction. This is because the Xilinx's compiler emits
+this instruction on the libc's \verb|_exit| routine, which is eventually called
+once \verb|main| terminates, and no instructions after are executed since it's
+an infinite loop.
 
 
 \subsection{Register File}
@@ -77,8 +99,9 @@ The register file, implemented in \verb|src/register.c|, holds the value of all
 registers, and tracks their updates on the pipeline. On each clock cycle, the
 routine \verb|register_clock| is called to advance the status bits in the
 register file. Access is done through the \verb|register_read| and
-\verb|register_write| routines.
-
+\verb|register_write| routines. A register is marked for tracking using
+\verb|register_mark_used|, and its status queried with \verb|register_in_used|.
+The registers are zero initialized and writes to register 0 are ignored.
 
 
 \subsection{Memory}
@@ -88,36 +111,218 @@ word_t *mem = NULL;
 size_t memsize = 0;
 \end{verbatim}
 
-\subsection{Instruction Fetch}
+The memory, implemented in \verb|src/memory.c| is created with the \verb|init_memory|
+routine, which receives the number of addressing bits. This is used to know how
+large the memory is, and to mask off irrelevant bits so we have a cycling memory.
+
+The memory is zero initialized, and can be flashed (e.g.\ from a file) using
+\verb|flash_memory|. The simulator has a command-line option for specifying
+endianness, which is used to convert the byte order transparently to the CPU,
+which always executes in little endian. Memory access is done using the
+\verb|memory_read| and \verb|memory_write| routines.
+
+
+\subsection{IF stage}
+
+\begin{verbatim}
+struct if_state_t {
+    int pc_sel;
+
+    address_t branch_pc;
+    address_t next_pc;
+} if_state;
+\end{verbatim}
 
 The IF stage (\verb|if_stage|), implemented in \verb|src/if_stage.c|, first proceeds to check if
-there's a stall (\verb|cpu_state.id_stall != 0|) in the Instruction Decode (ID)
+there's a stall (\verb|cpu_state.id_stall != 0|) in the ID
 stage. If there is not, it checks whether it is stalled because of ongoing
-branches (\verb|cpu_state.if_stalls > 0|).
+branches (\verb|cpu_state.if_stalls > 0|) and the branch is not delayed. If none
+of those conditions happen, then the new PC is chosen either from a branch, if
+\verb|if_state.pc_sel == IF_SELPC_BRANCH|, or \verb|PC + 4|. This
+PC is then used as an address when fetching an instruction from memory. If the
+fetched instruction is \verb|bri 0|, the IF stage is disabled. The instruction
+then moves on to the ID stage, along with its PC. The PC is always passed along
+with the control and data signals so the CPU can keep track of what instruction
+is at what pipeline stage.
 
 
+\subsection{ID stage}
 
-\subsection{Instruction Decode}
+\begin{verbatim}
+struct id_state_t {
+    address_t pc;
+    instruction_t instruction;
+} id_state;
+\end{verbatim}
+
+This stage is a big, ugly switch statement which sets \verb|ex_state|'s and
+\verb|cpu_state|'s fields according to the fetched instruction. Branches set
+\verb|cpu_state.if_stalls| to 3, and delayed branches set
+\verb|cpu_state.has_delayed_branch| to 1. If the operands to an instruction are
+unavailable because they're further in the pipeline, the ID stage stalls by
+setting \verb|cpu_state.id_stall| to 1, which halts the IF stage too. If they're
+available, they're set to unavailable using \verb|register_mark_used|. The MSR's
+immediate flag (\verb|msr.i|) is set to 0 unless an \verb|imm| instruction is
+being decoded. Immediate extension occurs here, in the \verb|extend_immediate|
+routine. One additional instruction is recognized, but unimplemented: \verb|mts|.
+It is so because the Xilinx's compiler emits this instruction for the libc
+initialization, so the simulator doesn't abort when seeing it.
 
 
+\subsection{EX stage}
 
-\subsection{Execute}
+\begin{verbatim}
+struct ex_state_t {
+    address_t pc;
+
+    word_t op_a, op_b, op_c;
+    int alu_control, select_op_a;
+    int carry_write_enable;
+    int is_signed;
+    int use_carry;
+
+    int branch_enable;
+    int branch_cond;
+
+    address_t wb_dest_register;
+    int wb_select_data;
+    int wb_write_enable;
+    word_t wb_data;
+
+    int mem_access;
+    int mem_mode;
+    int mem_write_enable;
+    word_t mem_data;
+} ex_state;
+\end{verbatim}
+
+The fields starting with ``wb'' or ``mem'' are passed through to the MEM stage
+untouched. Arithmetic is done depending on the control signal on
+\verb|ex_state.alu_control|. \verb|ex_state.select_op_a| is a remnant of past
+eons and will be removed in a future iteration. There's a flag to control if
+operations are signed or not (\verb|ex_state.is_signed|), to use and/or keep the
+carry flag (\verb|ex_state.use_carry| and \verb|!ex_state.carry_write_enable|,
+respectively). If branching, calculate the target address, test the internal
+zero and negative flags, and compare to the branch condition
+(\verb|ex_state.branch_cond|). If the branch is to be taken, set the
+\verb|if_state.branch_pc| and \verb|if_state.pc_sel| accordingly. The ALU's
+result is placed in \verb|mem_state.alu_result|.
 
 
+\subsection{MEM stage}
 
-\subsection{Memory}
+\begin{verbatim}
+struct mem_state_t {
+    address_t pc;
+
+    address_t wb_dest_register;
+    int wb_select_data;
+    int wb_write_enable;
+    word_t wb_data;
+
+    word_t data;
+    word_t alu_result;
+    int write_enable;
+    int memory_access;
+    int mode;
+} mem_state;
+\end{verbatim}
+
+The fields starting with ``wb'' are passed through to the WB stage untouched.
+The address, coming from \verb|mem_state.alu_result|, is used to read from
+memory. The read value is masked and shifted around according to whether or not
+we're addressing bytes, half-words, or words, and stored in
+\verb|wb_state.memory_out|. If \verb|mem_state.write_enable|, then data from the
+ID stage, \verb|mem_state.data|, is masked and shifted around, OR'ed with the
+relevant portions of the read data, and written to memory. This is to support
+writes to half-words and bytes. An alternative implementation would read and
+write from different memory banks.
 
 
+\subsection{WB stage}
 
-\subsection{Write Back}
+\begin{verbatim}
+struct wb_state_t {
+    address_t pc;
+    word_t memory_out;
+    word_t alu_result;
+    word_t data;
 
+    address_t dest_register;
+    int select_data;
+    int write_enable;
+} wb_state;
+\end{verbatim}
+
+This is the logically simplest stage. We select what data to write
+(\verb|wb_state.select_data|), among the PC, the MEM stage, the EX stage, and
+the ID stage, to what register (\verb|wb_state.dest_register|) and store it if
+\verb|wb_state.write_enable != 0|.
 
 
 \section{Challenges}
 
+A non-exhaustive list of bugs, logic or implementation, encountered:
+
+\begin{itemize}
+\item Forgetting to turn off the \verb|msr.i| flag after each instruction.
+\item Right shifts. The C standard leaves implementation-defined whether the
+right shift is arithmetic or not, so I had to implement it.
+\item Undefined behaviour. Signed integer overflow, shifts by widths greater or
+equal to the number of bits of the type. Mostly solved by judicious checking and
+using unsigned values for everything.
+\item Having no way to send data to the WB stage directly from the ID stage.
+Broke the sign-extension instructions since these are performed in the ID stage,
+and hence didn't go through the EX or MEM stages' data. Could have gone through
+the EX stage as an addition with 0 and the \verb|ex_state.keep_carry| flag set.
+\item Forgetting to deal with endianness in memory. \verb|lleHw ,odlro|.
+\item Not paying attention to the compare instructions' operands. I had fun
+debugging a problem where I implemented the \verb|cmp| and \verb|cmpu|
+instructions by symmetry with the \verb|rsub[i][c][k]| family. I had not noticed
+that the operands were swapped.
+\item Opcode decoding. When testing for bitwise logical operations, the check
+for \verb|andn| was wrong and turned the \verb|and| and \verb|xor| instructions
+into \verb|andn| instructions.
+\end{itemize}
+
+The biggest difficulty was debugging the CPU. There are lots of things going on,
+even in an implementation as simple as this one. I wrote some debugging code
+which let me step through the CPU state, a cycle at a time. I also added options
+to trace writes to memory and registers. A list of available options can be
+found near the top of \verb|src/main.c|.
+
+
+\section{Performance, and next steps}
+
+It's slow. The test program ended with an IPC of $0.72$ (compiled with gcc 4.9.2
+with -Ofast flag), which is hardly interesting. With forwarding that would
+improve significantly, I believe. For the next assignment, I plan to implement
+Tomasulo's algorithm, and severely rearchitect the simulator. But Tomasulo's
+algorithm won't bring much to the table versus forwarding for instructions with
+1 cycle of latency, so I plan to introduce delays in some heavier instructions.
+
+Base plan:
+\begin{itemize}
+\item Implement Tomasulo's algorithm;
+\item Compare the execution of the test program on the two microarchitectures;
+\end{itemize}
+
+If-there's-time-plan:
+\begin{itemize}
+\item Introduce 3 cycles of latency on multiply instructions. Add 3 levels of
+cache , with increasing sizes, and latencies of 4, 10, and 40 cycles.
+\item Implement 5-stage pipeline with forwarding;
+\item Implement 5-stage multicycle;
+\item Implement Tomasulo's algorithm with multiple issue.
+\item Compare the execution of the test program on the five microarchitectures;
+\end{itemize}
 
 
 \section{Conclusion}
 
+I have implemented a simple, functional simulator for a subset of the MicroBlaze
+architecture. It was not a complicated endeavour, with the main problems being
+caused by lack of attention in my part, since the MicroBlaze architecture is
+quite simple, and very regular.
 
 \end{document}
