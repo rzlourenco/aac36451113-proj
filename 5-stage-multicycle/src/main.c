@@ -158,6 +158,8 @@ int main(int argc, char **argv) {
         fprintf(trace_functions, "%08x: %08x\n", cpu_state.pc, cpu_state.pc);
     }
 
+    cpu_dump(0);
+
     while (!cpu_halt()) {
         clock();
         cpu_dump(0);
