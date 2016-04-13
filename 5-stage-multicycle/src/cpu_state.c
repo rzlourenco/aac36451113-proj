@@ -55,62 +55,41 @@ void init_cpu(void) {
 }
 
 int cpu_halt(void) {
-    return cpu_state.halt || (!cpu_state.if_enable && !cpu_state.id_enable && !cpu_state.ex_enable &&
+    return cpu_state.halt && (!cpu_state.if_enable && !cpu_state.id_enable && !cpu_state.ex_enable &&
            !cpu_state.mem_enable && !cpu_state.wb_enable);
 }
 
 void clock(void) {
-    if (cpu_state.if_stalls > 0) {
-        cpu_state.if_stalls -= 1;
-    }
-
     if (cpu_state.wb_enable) {
-        cpu_state.wb_enable = 0;
-
         wb_stage();
-
-        wb_state = (struct wb_state_t){ 0 };
+        wb_state = (struct wb_state_t){0};
     }
 
     if (cpu_state.mem_enable) {
-        cpu_state.wb_enable = 1;
-        cpu_state.mem_enable = 0;
-
         mem_stage();
-
-        mem_state = (struct mem_state_t){ 0 };
+        mem_state = (struct mem_state_t){0};
     }
 
     if (cpu_state.ex_enable) {
-        cpu_state.mem_enable = 1;
-        cpu_state.ex_enable = 0;
-
         ex_stage();
-
-        ex_state = (struct ex_state_t){ 0 };
+        ex_state = (struct ex_state_t){0};
     }
 
     if (cpu_state.id_enable) {
-        cpu_state.ex_enable = 1;
-        cpu_state.id_enable = 0;
-        cpu_state.id_stall = 0;
-
         id_stage();
-
-        // Save instruction if we must wait for operand fetch
-        if (!cpu_state.id_stall) {
-            id_state = (struct id_state_t){ 0 };
-        }
+        id_state = (struct id_state_t){0};
     }
 
     if (cpu_state.if_enable) {
-        cpu_state.id_enable = 1;
-
         if_stage();
     }
 
-    // Advance register-in-use state
-    register_clock();
+    int old_wb = cpu_state.wb_enable;
+    cpu_state.wb_enable = cpu_state.mem_enable;
+    cpu_state.mem_enable = cpu_state.ex_enable;
+    cpu_state.ex_enable = cpu_state.id_enable;
+    cpu_state.id_enable = cpu_state.if_enable;
+    cpu_state.if_enable = cpu_state.halt ? 0 : old_wb;
 
     ++cpu_state.total_cycles;
 }
@@ -123,13 +102,11 @@ void cpu_dump(int signal) {
 
     fprintf(stderr, "\tAfter %zu clock cycle(s)\n", cpu_state.total_cycles);
     fprintf(stderr,
-            "\tpc=%08x msr{ .c=%d .i=%d } rIMM=%04x if_stalls=%d has_delayed_branch=%d\n"
-            "",
+            "\tpc=%08x msr{ .c=%d .i=%d } rIMM=%04x has_delayed_branch=%d\n",
             cpu_state.pc,
             msr.c,
             msr.i,
             rIMM,
-            cpu_state.if_stalls,
             cpu_state.has_delayed_branch);
 
     fprintf(stderr, "\tif(%d) next_pc=%08x branch_pc=%08x pc_sel=%d\n",
@@ -138,9 +115,8 @@ void cpu_dump(int signal) {
             if_state.branch_pc,
             if_state.pc_sel);
 
-    fprintf(stderr, "\tid(%d) id_stall=%d pc=%08x instruction=%08x\n",
+    fprintf(stderr, "\tid(%d) pc=%08x instruction=%08x\n",
             cpu_state.id_enable,
-            cpu_state.id_stall,
             id_state.pc,
             id_state.instruction);
 
@@ -172,9 +148,9 @@ void cpu_dump(int signal) {
     register_dump();
     fprintf(stderr, "\n");
 
+    fflush(stderr);
+
     if (signal) {
         exit(signal);
     }
-
-    fflush(stderr);
 }

@@ -7,6 +7,3 @@ void register_write(address_t reg, word_t data);
 
 void register_dump(void);
 
-void register_clock(void);
-
-int register_in_use(address_t reg);

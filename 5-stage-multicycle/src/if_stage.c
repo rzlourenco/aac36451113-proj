@@ -7,27 +7,20 @@
 struct if_state_t if_state;
 
 void if_stage(void) {
-    if (cpu_state.id_stall) {
-        return;
-    }
-
-    if (cpu_state.if_stalls > 0) {
-        if (cpu_state.has_delayed_branch) {
-            cpu_state.has_delayed_branch = 0;
-        } else {
-            return;
-        }
-    }
-
     switch (if_state.pc_sel) {
         case IF_SELPC_NEXT:
+            cpu_state.has_delayed_branch = 0;
             cpu_state.pc = if_state.next_pc;
+            if_state.next_pc = if_state.next_pc + sizeof(word_t);
             break;
         case IF_SELPC_BRANCH:
-            cpu_state.pc = if_state.branch_pc;
+            cpu_state.pc = cpu_state.has_delayed_branch ? if_state.next_pc : if_state.branch_pc;
+            if_state.next_pc = cpu_state.has_delayed_branch ? if_state.branch_pc : (if_state.branch_pc + sizeof(word_t));
+            cpu_state.has_delayed_branch = 0;
             break;
         default:
             ABORT_WITH_MSG("unknown IF_SELPC value");
+            break;
     }
 
     if (has_breakpoint && cpu_state.pc == breakpoint) {
@@ -41,10 +34,9 @@ void if_stage(void) {
 
     // BRI 0, an infinite loop
     if (instruction == 0xB8000000) {
-        cpu_state.if_enable = 0;
+        cpu_state.halt = 1;
         return;
     }
 
-    if_state.next_pc = cpu_state.pc + (address_t) sizeof(address_t);
     if_state.pc_sel = IF_SELPC_NEXT;
 }

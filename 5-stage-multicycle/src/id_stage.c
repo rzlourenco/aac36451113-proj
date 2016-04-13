@@ -66,12 +66,6 @@ void id_stage(void) {
     case 0x0E: // ADDIKC
     case 0x0F: // RSUBIKC
     {
-        if (register_in_use(ra) || (!is_imm_instr && register_in_use(rb))) {
-            cpu_state.id_stall = 1;
-            cpu_state.ex_enable = 0;
-            return;
-        }
-
         ex_state.wb_dest_register = rd;
         ex_state.wb_write_enable = 1;
         ex_state.wb_select_data = WB_SEL_EX;
@@ -108,12 +102,6 @@ void id_stage(void) {
 
     case 0x18: // MULI
     {
-        if (register_in_use(ra) || (!is_imm_instr && register_in_use(rb))) {
-            cpu_state.id_stall = 1;
-            cpu_state.ex_enable = 0;
-            return;
-        }
-
         ex_state.wb_dest_register = rd;
         ex_state.wb_write_enable = 1;
         ex_state.wb_select_data = WB_SEL_EX;
@@ -148,12 +136,6 @@ void id_stage(void) {
     case 0x11: // BSRA, BSLA, BSRL, BSLL
     case 0x19: // BSRAI, BSLAI, BSRLI, BSLLI
     {
-        if (register_in_use(ra) || (!is_imm_instr && register_in_use(rb))) {
-            cpu_state.id_stall = 1;
-            cpu_state.ex_enable = 0;
-            return;
-        }
-
         ex_state.wb_write_enable = 1;
         ex_state.wb_dest_register = rd;
         ex_state.wb_select_data = WB_SEL_EX;
@@ -170,12 +152,6 @@ void id_stage(void) {
 
     case 0x24: // SRA, SRC, SRL, SEXT8, SEXT16
     {
-        if (register_in_use(ra)) {
-            cpu_state.id_stall = 1;
-            cpu_state.ex_enable = 0;
-            return;
-        }
-
         ex_state.wb_write_enable = 1;
         ex_state.wb_dest_register = rd;
         ex_state.wb_select_data = WB_SEL_EX;
@@ -225,12 +201,6 @@ void id_stage(void) {
     case 0x2A: // XORI
     case 0x2B: // ANDNI
     {
-        if (register_in_use(ra) || (!is_imm_instr && register_in_use(rb))) {
-            cpu_state.id_stall = 1;
-            cpu_state.ex_enable = 0;
-            return;
-        }
-
         ex_state.wb_dest_register = rd;
         ex_state.wb_select_data = WB_SEL_EX;
         ex_state.wb_write_enable = 1;
@@ -282,12 +252,6 @@ void id_stage(void) {
     case 0x39: // LHUI
     case 0x3A: // LWI
     {
-        if (register_in_use(ra) || (!is_imm_instr && register_in_use(rb))) {
-            cpu_state.id_stall = 1;
-            cpu_state.ex_enable = 0;
-            return;
-        }
-
         ex_state.mem_access = 1;
         switch (opcode & 0x03) {
             case 0:
@@ -326,12 +290,6 @@ void id_stage(void) {
     case 0x3D: // SHI
     case 0x3E: // SWI
     {
-        if (register_in_use(rd) || register_in_use(ra) || (!is_imm_instr && register_in_use(rb))) {
-            cpu_state.id_stall = 1;
-            cpu_state.ex_enable = 0;
-            return;
-        }
-
         ex_state.mem_access = 1;
         ex_state.mem_write_enable = 1;
         ex_state.mem_data = register_read(rd);
@@ -371,14 +329,6 @@ void id_stage(void) {
 
     case 0x2E: // BRI, BRLI, BRAI, BRALI, BRID, BRLID, BRAID, BRALID
     {
-        if (!is_imm_instr && register_in_use(rb)) {
-            cpu_state.id_stall = 1;
-            cpu_state.ex_enable = 0;
-            return;
-        }
-
-        cpu_state.if_stalls = 3;
-
         ex_state.branch_enable = 1;
         ex_state.branch_cond = EX_COND_ALWAYS;
         ex_state.alu_control = EX_ALU_ADD;
@@ -410,14 +360,6 @@ void id_stage(void) {
     {
         ASSERT_OR_ILLEGAL(br_cond <= 5);
 
-        if (register_in_use(ra) || (!is_imm_instr && register_in_use(rb))) {
-            cpu_state.id_stall = 1;
-            cpu_state.ex_enable = 0;
-            return;
-        }
-
-        cpu_state.if_stalls = 3;
-
         ex_state.branch_enable = 1;
         ex_state.branch_cond = br_cond;
         ex_state.alu_control = EX_ALU_CMP;
@@ -439,14 +381,6 @@ void id_stage(void) {
     {
         ASSERT_OR_ILLEGAL(BITS(bits, 21, 25) == 0x10);
 
-        if (register_in_use(ra)) {
-            cpu_state.id_stall = 1;
-            cpu_state.ex_enable = 0;
-            return;
-        }
-
-        cpu_state.if_stalls = 3;
-
         ex_state.branch_enable = 1;
         ex_state.branch_cond = EX_COND_ALWAYS;
         ex_state.alu_control = EX_ALU_ADD;
@@ -467,9 +401,6 @@ void id_stage(void) {
         ABORT_WITH_MSG("illegal instruction (opcode %02x pc %08x instr %08x)", opcode, id_state.pc, id_state.instruction);
         break;
     };
-
-    cpu_state.total_instructions++;
-    cpu_state.ex_enable = 1;
 }
 
 static word_t extend_immediate(word_t imm) {

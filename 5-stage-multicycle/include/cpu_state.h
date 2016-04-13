@@ -12,9 +12,6 @@ struct cpu_state_t {
     int halt;
     int has_delayed_branch;
 
-    int if_stalls;
-    int id_stall;
-
     word_t if_enable;
     word_t id_enable;
     word_t ex_enable;
