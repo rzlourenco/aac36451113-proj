@@ -15,6 +15,7 @@ void if_stage(void) {
         if (cpu_state.has_delayed_branch) {
             cpu_state.has_delayed_branch = 0;
         } else {
+            cpu_state.id_enable = 0;
             return;
         }
     }
@@ -42,6 +43,7 @@ void if_stage(void) {
     // BRI 0, an infinite loop
     if (instruction == 0xB8000000) {
         cpu_state.if_enable = 0;
+        cpu_state.halt = 1;
         return;
     }
 

@@ -31,4 +31,6 @@ void wb_stage(void) {
         }
         register_write(wb_state.dest_register, data);
     }
+
+    cpu_state.total_instructions++;
 }

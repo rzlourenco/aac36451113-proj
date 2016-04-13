@@ -55,7 +55,7 @@ void init_cpu(void) {
 }
 
 int cpu_halt(void) {
-    return cpu_state.halt || (!cpu_state.if_enable && !cpu_state.id_enable && !cpu_state.ex_enable &&
+    return cpu_state.halt && (!cpu_state.if_enable && !cpu_state.id_enable && !cpu_state.ex_enable &&
            !cpu_state.mem_enable && !cpu_state.wb_enable);
 }
 

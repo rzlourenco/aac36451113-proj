@@ -35,6 +35,8 @@ static word_t alu_xor(word_t op_a, word_t op_b);
 void ex_stage(void) {
     word_t result;
 
+    flags.carry = flags.negative = flags.zero = 0;
+
     // These pass through
     mem_state.pc = ex_state.pc;
     mem_state.wb_dest_register = ex_state.wb_dest_register;
@@ -117,6 +119,7 @@ static word_t alu_add(word_t op_a, word_t op_b, word_t op_c) {
 
     result = lop_a + lop_b + lop_c;
     flags.carry = (result & mask) != (l_word_t) 0;
+
     return (word_t) (result & ~mask);
 }
 
