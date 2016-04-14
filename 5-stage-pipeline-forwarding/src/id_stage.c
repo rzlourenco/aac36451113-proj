@@ -77,20 +77,24 @@ void id_stage(void) {
         ex_state.wb_select_data = WB_SEL_EX;
 
         ex_state.alu_control = EX_ALU_ADD;
-        ex_state.op_a = is_imm_instr ? extend_immediate(imm16) : register_read(rb);
-        ex_state.op_b = register_read(ra);
-        ex_state.op_c = 0;
+        ex_state.op_a = register_read(ra);
+        ex_state.op_b = is_imm_instr ? extend_immediate(imm16) : register_read(rb);
 
         ex_state.carry_write_enable = !keep_carry;
 
         // We're dealing with a CMP/CMPU
         if (opcode == 0x05 && (function == 1 || function == 3)) {
+            // CMP has swapped operands
+            word_t tmp = ex_state.op_a;
+            ex_state.op_a = ex_state.op_b;
+            ex_state.op_b = tmp;
+
             ex_state.is_signed = function == 1;
             ex_state.alu_control = EX_ALU_CMP;
         }
         // Subtract
         else if (opcode & 0x01) {
-            ex_state.op_b = ~ex_state.op_b;
+            ex_state.op_a = ~ex_state.op_a;
             ex_state.op_c = 1;
         }
 
