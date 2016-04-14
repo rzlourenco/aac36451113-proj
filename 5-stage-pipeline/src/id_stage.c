@@ -379,7 +379,7 @@ void id_stage(void) {
             return;
         }
 
-        cpu_state.if_stalls = 3;
+        cpu_state.if_stalls = 2;
 
         ex_state.branch_enable = 1;
         ex_state.branch_cond = EX_COND_ALWAYS;
@@ -418,7 +418,7 @@ void id_stage(void) {
             return;
         }
 
-        cpu_state.if_stalls = 3;
+        cpu_state.if_stalls = 2;
 
         ex_state.branch_enable = 1;
         ex_state.branch_cond = br_cond;
@@ -447,7 +447,7 @@ void id_stage(void) {
             return;
         }
 
-        cpu_state.if_stalls = 3;
+        cpu_state.if_stalls = 2;
 
         ex_state.branch_enable = 1;
         ex_state.branch_cond = EX_COND_ALWAYS;
