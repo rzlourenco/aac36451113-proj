@@ -44,3 +44,4 @@ set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR})
 
 add_subdirectory(5-stage-multicycle)
 add_subdirectory(5-stage-pipeline)
+add_subdirectory(5-stage-pipeline-forwarding)
