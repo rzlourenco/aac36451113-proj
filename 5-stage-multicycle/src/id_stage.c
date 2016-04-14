@@ -173,12 +173,14 @@ void id_stage(void) {
             ex_state.carry_write_enable = 1;
             break;
         case 0x060: // SEXT8
-            ex_state.wb_select_data = WB_SEL_WB;
-            ex_state.wb_data = (word_t)sign_extend(register_read(ra), 32, 7);
+            ex_state.alu_control = EX_ALU_ADD;
+            ex_state.op_a = (word_t)sign_extend(register_read(ra), 32, 7);
+            ex_state.op_b = 0;
             break;
         case 0x061: // SEXT16
-            ex_state.wb_select_data = WB_SEL_WB;
-            ex_state.wb_data = (word_t)sign_extend(register_read(ra), 32, 15);
+            ex_state.alu_control = EX_ALU_ADD;
+            ex_state.op_a = (word_t)sign_extend(register_read(ra), 32, 15);
+            ex_state.op_b = 0;
             break;
         default:
             ASSERT_OR_ILLEGAL(0);

@@ -156,7 +156,7 @@ void cpu_dump(int signal) {
             mem_state.alu_result,
             mem_state.data);
 
-    fprintf(stderr, "\twb(%d) pc=%08x write_enable=%d r%d<-%d(%08x %08x %08x %08x)\n",
+    fprintf(stderr, "\twb(%d) pc=%08x write_enable=%d r%d<-%d(%08x %08x %08x)\n",
             cpu_state.wb_enable,
             wb_state.pc,
             wb_state.write_enable,
@@ -164,8 +164,7 @@ void cpu_dump(int signal) {
             wb_state.select_data,
             wb_state.pc,
             wb_state.alu_result,
-            wb_state.memory_out,
-            wb_state.data
+            wb_state.memory_out
     );
 
     fprintf(stderr, "\n");

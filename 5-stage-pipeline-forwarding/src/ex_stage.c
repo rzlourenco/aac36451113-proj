@@ -42,7 +42,6 @@ void ex_stage(void) {
     mem_state.wb_dest_register = ex_state.wb_dest_register;
     mem_state.wb_write_enable = ex_state.wb_write_enable;
     mem_state.wb_select_data = ex_state.wb_select_data;
-    mem_state.wb_data = ex_state.wb_data;
     mem_state.write_enable = ex_state.mem_write_enable;
     mem_state.memory_access = ex_state.mem_access;
     mem_state.data = ex_state.mem_data;

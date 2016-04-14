@@ -18,9 +18,6 @@ void wb_stage(void) {
         case WB_SEL_MEM:
             data = wb_state.memory_out;
             break;
-        case WB_SEL_WB:
-            data = wb_state.data;
-            break;
         default:
             ABORT_WITH_MSG("unknown WB_SEL");
     }

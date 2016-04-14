@@ -13,7 +13,6 @@ void mem_stage(void) {
     wb_state.select_data = mem_state.wb_select_data;
     wb_state.write_enable = mem_state.wb_write_enable;
     wb_state.dest_register = mem_state.wb_dest_register;
-    wb_state.data = mem_state.wb_data;
     wb_state.alu_result = mem_state.alu_result;
 
     if (mem_state.memory_access) {
