@@ -13,7 +13,8 @@ set(COMMON_C_FLAGS
         -D_POSIX_SOURCE \
         -Werror=pedantic \
         --pedantic-errors \
-        -fstack-protector-strong")
+        -fstack-protector-strong \
+        -fdiagnostics-color=always")
 
 set(CMAKE_C_FLAGS
         "${CMAKE_C_FLAGS} ${COMMON_C_FLAGS}")
