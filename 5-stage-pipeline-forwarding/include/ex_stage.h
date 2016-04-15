@@ -5,14 +5,17 @@
 struct ex_state_t {
     address_t pc;
 
-    word_t op_a, op_b, op_c;
-    int alu_control, select_op_a;
-    int carry_write_enable;
+    int alu_control;
+    word_t op_a, op_b;
+    int sel_op_a, sel_op_b;
     int is_signed;
+    int carry_write_enable;
     int use_carry;
 
     int branch_enable;
     int branch_cond;
+    int branch_sel_op;
+    word_t branch_op;
 
     address_t wb_dest_register;
     int wb_select_data;
@@ -36,6 +39,11 @@ enum {
     EX_ALU_MULH = 8,
     EX_ALU_MULHU = 9,
     EX_ALU_MULHSU = 10,
+    EX_ALU_ADDC = 11,
+    EX_ALU_SUB = 12,
+    EX_ALU_SUBC = 13,
+    EX_ALU_ANDN = 14,
+    EX_ALU_SEXT = 15,
 };
 
 enum {
@@ -46,6 +54,11 @@ enum {
     EX_COND_GT = 4,
     EX_COND_GE = 5,
     EX_COND_ALWAYS = 8,
+};
+
+enum {
+    EX_SELOP_IMM = 0,
+    EX_SELOP_PC = 1,
 };
 
 extern struct ex_state_t ex_state;

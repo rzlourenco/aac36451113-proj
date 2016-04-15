@@ -9,10 +9,9 @@
 struct ex_state_t ex_state;
 
 static struct {
-    word_t carry : 1;
-
-    word_t negative : 1;
-    word_t zero : 1;
+    int carry;
+    int negative;
+    int zero;
 } flags;
 
 static word_t alu_add(word_t op_a, word_t op_b, word_t op_c);
@@ -25,64 +24,117 @@ static word_t alu_mul(word_t op_a, word_t op_b, int high, int op_a_unsigned, int
 
 static word_t alu_or(word_t op_a, word_t op_b);
 
+static word_t alu_sext(word_t op_a, word_t op_b);
+
 static word_t alu_sl(word_t op_a, word_t op_b);
 
 static word_t alu_sr(word_t op_a, word_t op_b);
 
 static word_t alu_xor(word_t op_a, word_t op_b);
 
+static void branch_control(word_t branch_op, word_t alu_result);
 
 void ex_stage(void) {
-    word_t result;
+    word_t result, op_a, op_b, branch_op;
+
+    switch (ex_state.sel_op_a) {
+        case EX_SELOP_IMM:
+            op_a = ex_state.op_a;
+            break;
+        case EX_SELOP_PC:
+            op_a = ex_state.pc;
+            break;
+        default:
+            ABORT_WITH_MSG("unknown EX_SELOP A value");
+    }
+
+    switch (ex_state.sel_op_b) {
+        case EX_SELOP_IMM:
+            op_b = ex_state.op_b;
+            break;
+        case EX_SELOP_PC:
+            op_b = ex_state.pc;
+            break;
+        default:
+            ABORT_WITH_MSG("unknown EX_SELOP B value");
+    }
+
+    switch (ex_state.branch_sel_op) {
+        case EX_SELOP_IMM:
+            branch_op = ex_state.branch_op;
+            break;
+        case EX_SELOP_PC:
+            branch_op = ex_state.pc;
+            break;
+        default:
+            ABORT_WITH_MSG("unknown EX_SELOP BRANCH value");
+    }
 
     flags.carry = flags.negative = flags.zero = 0;
 
     // These pass through
     mem_state.pc = ex_state.pc;
+
     mem_state.wb_dest_register = ex_state.wb_dest_register;
     mem_state.wb_write_enable = ex_state.wb_write_enable;
     mem_state.wb_select_data = ex_state.wb_select_data;
+
     mem_state.write_enable = ex_state.mem_write_enable;
     mem_state.memory_access = ex_state.mem_access;
     mem_state.data = ex_state.mem_data;
     mem_state.mode = ex_state.mem_mode;
 
     switch (ex_state.alu_control) {
-    case EX_ALU_CMP:
-        result = alu_cmp(ex_state.op_a, ex_state.op_b);
-        break;
     case EX_ALU_ADD:
-        result = alu_add(ex_state.op_a, ex_state.op_b, ex_state.op_c);
+        result = alu_add(op_a, op_b, 0);
+        break;
+    case EX_ALU_ADDC:
+        result = alu_add(op_a, op_b, msr.c);
+        break;
+    case EX_ALU_SUB:
+        result = alu_add(~op_a, op_b, 1);
+        break;
+    case EX_ALU_SUBC:
+        result = alu_add(~op_a, op_b, msr.c);
+        break;
+    case EX_ALU_CMP:
+        result = alu_cmp(op_a, op_b);
         break;
     case EX_ALU_OR:
-        result = alu_or(ex_state.op_a, ex_state.op_b);
+        result = alu_or(op_a, op_b);
         break;
     case EX_ALU_AND:
-        result = alu_and(ex_state.op_a, ex_state.op_b);
+        result = alu_and(op_a, op_b);
         break;
     case EX_ALU_XOR:
-        result = alu_xor(ex_state.op_a, ex_state.op_b);
+        result = alu_xor(op_a, op_b);
+        break;
+    case EX_ALU_ANDN:
+        result = alu_and(op_a, ~op_b);
         break;
     case EX_ALU_SHIFT_LEFT:
-        result = alu_sl(ex_state.op_a, ex_state.op_b);
+        result = alu_sl(op_a, op_b);
         break;
     case EX_ALU_SHIFT_RIGHT:
-        result = alu_sr(ex_state.op_a, ex_state.op_b);
+        result = alu_sr(op_a, op_b);
         break;
     case EX_ALU_MUL:
-        result = alu_mul(ex_state.op_a, ex_state.op_b, 0, 0, 0);
+        result = alu_mul(op_a, op_b, 0, 0, 0);
         break;
     case EX_ALU_MULH:
-        result = alu_mul(ex_state.op_a, ex_state.op_b, 1, 0, 0);
+        result = alu_mul(op_a, op_b, 1, 0, 0);
         break;
     case EX_ALU_MULHU:
-        result = alu_mul(ex_state.op_a, ex_state.op_b, 1, 1, 1);
+        result = alu_mul(op_a, op_b, 1, 1, 1);
         break;
     case EX_ALU_MULHSU:
-        result = alu_mul(ex_state.op_a, ex_state.op_b, 1, 1, 0);
+        result = alu_mul(op_a, op_b, 1, 1, 0);
+        break;
+    case EX_ALU_SEXT:
+        result = alu_sext(op_a, op_b);
         break;
     default:
-        ABORT_WITH_MSG("Unknown ALU operation");
+        ABORT_WITH_MSG("Unknown ALU operation %d", ex_state.alu_control);
     }
 
     mem_state.alu_result = result;
@@ -95,20 +147,7 @@ void ex_stage(void) {
     }
 
     if (ex_state.branch_enable) {
-        if (ex_state.branch_cond == EX_COND_ALWAYS) {
-            if_state.branch_pc = result;
-            if_state.pc_sel = IF_SELPC_BRANCH;
-        }
-        else if ((ex_state.branch_cond == EX_COND_EQ && flags.zero) ||
-                 (ex_state.branch_cond == EX_COND_NE && !flags.zero) ||
-                 (ex_state.branch_cond == EX_COND_LT && flags.negative) ||
-                 (ex_state.branch_cond == EX_COND_GT && !flags.negative) ||
-                 (ex_state.branch_cond == EX_COND_LE && (flags.zero || flags.negative)) ||
-                 (ex_state.branch_cond == EX_COND_GE && (flags.zero || !flags.negative))) {
-            // XXX: Needs an additional adder besides the one(s) in the ALU
-            if_state.branch_pc = (word_t)((l_word_t)ex_state.pc + (l_word_t)ex_state.op_c);
-            if_state.pc_sel = IF_SELPC_BRANCH;
-        }
+        branch_control(branch_op, result);
     }
 }
 
@@ -171,6 +210,12 @@ static word_t alu_or(word_t op_a, word_t op_b) {
     return result;
 }
 
+static word_t alu_sext(word_t op_a, word_t op_b) {
+    word_t result = (word_t)sign_extend(op_a, 32, op_b);
+
+    return result;
+}
+
 static word_t alu_sl(word_t op_a, word_t op_b) {
     word_t result;
 
@@ -211,4 +256,20 @@ static word_t alu_xor(word_t op_a, word_t op_b) {
     word_t result = op_a ^ op_b;
 
     return result;
+}
+
+static void branch_control(word_t branch_op, word_t alu_result) {
+    int less_than = (s_word_t)branch_op < 0;
+    int equal = branch_op == 0;
+
+    if ((ex_state.branch_cond == EX_COND_ALWAYS) ||
+        (ex_state.branch_cond == EX_COND_EQ && equal) ||
+        (ex_state.branch_cond == EX_COND_NE && !equal) ||
+        (ex_state.branch_cond == EX_COND_LT && less_than) ||
+        (ex_state.branch_cond == EX_COND_GT && !less_than) ||
+        (ex_state.branch_cond == EX_COND_LE && (equal || less_than)) ||
+        (ex_state.branch_cond == EX_COND_GE && (equal || !less_than))) {
+        if_state.branch_pc = alu_result;
+        if_state.pc_sel = IF_SELPC_BRANCH;
+    }
 }
