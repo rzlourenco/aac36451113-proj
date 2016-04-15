@@ -8,9 +8,9 @@
 
 static struct {
     word_t data;
-    word_t in_ex : 1;
-    word_t in_mem : 1;
-    word_t in_wb : 1;
+    int in_ex;
+    int in_mem;
+    int in_wb;
 } registers[32] = { 0 };
 
 word_t register_read(address_t reg) {

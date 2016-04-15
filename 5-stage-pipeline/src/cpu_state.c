@@ -144,10 +144,24 @@ void cpu_dump(int signal) {
             id_state.pc,
             id_state.instruction);
 
-    fprintf(stderr, "\tex(%d) pc=%08x branch_enable=%d\n",
+    fprintf(stderr, "\tex(%d) pc=%08x branch_enable=%d\n"
+                    "\t      op_a<-%d(%08x %08x)\n"
+                    "\t      op_b<-%d(%08x %08x)\n"
+                    "\t      branch_op<-%d(%08x %08x)\n"
+            ,
             cpu_state.ex_enable,
             ex_state.pc,
-            ex_state.branch_enable);
+            ex_state.branch_enable,
+            ex_state.sel_op_a,
+            ex_state.op_a,
+            ex_state.pc,
+            ex_state.sel_op_b,
+            ex_state.op_b,
+            ex_state.pc,
+            ex_state.branch_sel_op,
+            ex_state.branch_op,
+            ex_state.pc
+    );
 
     fprintf(stderr, "\tmem(%d) pc=%08x write_enable=%d address=%08x data=%08x\n",
             cpu_state.mem_enable,
