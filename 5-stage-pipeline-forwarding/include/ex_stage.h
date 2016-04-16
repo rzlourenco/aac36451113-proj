@@ -14,6 +14,7 @@ struct ex_state_t {
 
     int branch_enable;
     int branch_cond;
+
     int branch_sel_op;
     word_t branch_op;
 

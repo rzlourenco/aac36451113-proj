@@ -9,6 +9,9 @@ struct mem_state_t {
     int wb_select_data;
     int wb_write_enable;
 
+    int if_branch;
+    word_t if_branch_target;
+
     word_t data;
     word_t alu_result;
     int write_enable;

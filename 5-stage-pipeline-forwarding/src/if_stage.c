@@ -1,10 +1,9 @@
-#include <stdlib.h>
-#include "cpu_state.h"
-#include "if_stage.h"
-#include "memory.h"
 #include "id_stage.h"
 
-struct if_state_t if_state;
+#include "cpu_state.h"
+#include "if_stage.h"
+#include "mem_stage.h"
+#include "memory.h"
 
 void if_stage(void) {
     if (cpu_state.id_stall) {
@@ -14,21 +13,15 @@ void if_stage(void) {
     if (cpu_state.if_stalls > 0) {
         if (cpu_state.has_delayed_branch) {
             cpu_state.has_delayed_branch = 0;
+            cpu_state.pc += sizeof(address_t);
         } else {
             cpu_state.id_enable = 0;
             return;
         }
     }
 
-    switch (if_state.pc_sel) {
-        case IF_SELPC_NEXT:
-            cpu_state.pc = if_state.next_pc;
-            break;
-        case IF_SELPC_BRANCH:
-            cpu_state.pc = if_state.branch_pc;
-            break;
-        default:
-            ABORT_WITH_MSG("unknown IF_SELPC value");
+    if (mem_state.if_branch) {
+        cpu_state.pc = mem_state.if_branch_target;
     }
 
     if (has_breakpoint && cpu_state.pc == breakpoint) {
@@ -46,7 +39,4 @@ void if_stage(void) {
         cpu_state.halt = 1;
         return;
     }
-
-    if_state.next_pc = cpu_state.pc + (address_t) sizeof(address_t);
-    if_state.pc_sel = IF_SELPC_NEXT;
 }

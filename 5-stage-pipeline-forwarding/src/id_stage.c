@@ -47,6 +47,13 @@ void id_stage(void) {
     // The PC passes through
     ex_state.pc = id_state.pc;
 
+    // Disable control signals that can change state
+    ex_state.branch_enable = 0;
+    ex_state.carry_write_enable = 0;
+    ex_state.mem_write_enable = 0;
+    ex_state.mem_access = 0;
+    ex_state.wb_write_enable = 0;
+
     switch (opcode) {
     // ADD, ADDC, ADDK, ADDKC
     case 0x00: // ADD
@@ -382,7 +389,7 @@ void id_stage(void) {
             trace_call();
         }
 
-        stall_if(2);
+        stall_if(3);
         cpu_state.has_delayed_branch = br_delay;
         msr.i = 0;
 
@@ -415,7 +422,7 @@ void id_stage(void) {
         ex_state.alu_control = EX_ALU_ADD;
         ex_state.is_signed = 1;
 
-        stall_if(2);
+        stall_if(3);
         cpu_state.has_delayed_branch = br_cond_delay;
         msr.i = 0;
 
@@ -438,7 +445,7 @@ void id_stage(void) {
 
         trace_return();
 
-        stall_if(2);
+        stall_if(3);
         cpu_state.has_delayed_branch = 1;
         msr.i = 0;
 
@@ -450,8 +457,6 @@ void id_stage(void) {
         ABORT_WITH_MSG("illegal instruction (opcode %02x pc %08x instr %08x)", opcode, id_state.pc, id_state.instruction);
         break;
     };
-
-    cpu_state.ex_enable = 1;
 }
 
 static word_t extend_immediate(word_t imm) {
@@ -491,7 +496,6 @@ static void stall_if(int cycles) {
 
 static void stall_id(void) {
     cpu_state.id_stall = 1;
-    cpu_state.ex_enable = 0;
 }
 
 // Debugging purposes

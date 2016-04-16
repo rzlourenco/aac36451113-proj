@@ -72,11 +72,3 @@ int register_in_use(address_t reg) {
 
     return registers[reg].in_ex || registers[reg].in_mem; // || registers[reg].in_wb;
 }
-
-void register_mark_load(address_t reg) {
-    assert(reg < 32);
-
-    if (reg != 0) {
-        registers[reg].in_ex = 1;
-    }
-}

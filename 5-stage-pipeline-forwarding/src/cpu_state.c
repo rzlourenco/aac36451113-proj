@@ -47,7 +47,6 @@ void init_cpu(void) {
 
     rIMM = 0;
 
-    if_state = (struct if_state_t){ 0 };
     id_state = (struct id_state_t){ 0 };
     ex_state = (struct ex_state_t){ 0 };
     mem_state = (struct mem_state_t){ 0 };
@@ -63,51 +62,56 @@ void clock(void) {
     if (cpu_state.if_stalls > 0) {
         cpu_state.if_stalls -= 1;
     }
-
-    if (cpu_state.wb_enable) {
-        cpu_state.wb_enable = 0;
-
-        wb_stage();
-
-        wb_state = (struct wb_state_t){ 0 };
+    if (cpu_state.id_stall) {
+        cpu_state.id_stall = 0;
     }
 
-    if (cpu_state.mem_enable) {
-        cpu_state.wb_enable = 1;
-        cpu_state.mem_enable = 0;
+    struct id_state_t old_id_state = id_state, new_id_state = id_state;
+    struct ex_state_t old_ex_state = ex_state, new_ex_state = ex_state;
+    struct mem_state_t old_mem_state = mem_state, new_mem_state = mem_state;
+    struct wb_state_t old_wb_state = wb_state, new_wb_state = wb_state;
 
-        mem_stage();
+    if (cpu_state.if_enable) {
+        if_stage();
 
-        mem_state = (struct mem_state_t){ 0 };
-    }
-
-    if (cpu_state.ex_enable) {
-        cpu_state.mem_enable = 1;
-        cpu_state.ex_enable = 0;
-
-        ex_stage();
-
-        ex_state = (struct ex_state_t){ 0 };
+        new_id_state = id_state;
+        id_state = old_id_state;
     }
 
     if (cpu_state.id_enable) {
-        cpu_state.ex_enable = 1;
-        cpu_state.id_enable = 0;
-        cpu_state.id_stall = 0;
-
         id_stage();
 
-        // Save instruction if we must wait for operand fetch
-        if (!cpu_state.id_stall) {
-            id_state = (struct id_state_t){ 0 };
-        }
+        new_ex_state = ex_state;
+        ex_state = old_ex_state;
     }
 
-    if (cpu_state.if_enable) {
-        cpu_state.id_enable = 1;
+    if (cpu_state.ex_enable) {
+        ex_stage();
 
-        if_stage();
+        new_mem_state = mem_state;
+        mem_state = old_mem_state;
     }
+
+    if (cpu_state.mem_enable) {
+        mem_stage();
+
+        new_wb_state = wb_state;
+        wb_state = old_wb_state;
+    }
+
+    if (cpu_state.wb_enable) {
+        wb_stage();
+    }
+
+    cpu_state.wb_enable = cpu_state.mem_enable;
+    cpu_state.mem_enable = cpu_state.ex_enable;
+    cpu_state.ex_enable = cpu_state.id_enable && !cpu_state.id_stall;
+    cpu_state.id_enable = cpu_state.id_stall || (cpu_state.if_enable && cpu_state.if_stalls == 0);
+
+    id_state = new_id_state;
+    ex_state = new_ex_state;
+    mem_state = new_mem_state;
+    wb_state = new_wb_state;
 
     // Advance register-in-use state
     register_clock();
@@ -132,19 +136,20 @@ void cpu_dump(int signal) {
             cpu_state.if_stalls,
             cpu_state.has_delayed_branch);
 
-    fprintf(stderr, "\tif(%d) next_pc=%08x branch_pc=%08x pc_sel=%d\n",
+    fprintf(stderr, "\tif(%d) if_branch=%d if_branch_target=%08x\n",
             cpu_state.if_enable,
-            if_state.next_pc,
-            if_state.branch_pc,
-            if_state.pc_sel);
+            mem_state.if_branch,
+            mem_state.if_branch_target
+    );
 
     fprintf(stderr, "\tid(%d) id_stall=%d pc=%08x instruction=%08x\n",
             cpu_state.id_enable,
             cpu_state.id_stall,
             id_state.pc,
-            id_state.instruction);
+            id_state.instruction
+    );
 
-    fprintf(stderr, "\tex(%d) pc=%08x branch_enable=%d\n"
+    fprintf(stderr, "\tex(%d) pc=%08x branch_enable=%d branch_cond=%d\n"
                     "\t      op_a<-%d(%08x %08x)\n"
                     "\t      op_b<-%d(%08x %08x)\n"
                     "\t      branch_op<-%d(%08x %08x)\n"
@@ -152,6 +157,7 @@ void cpu_dump(int signal) {
             cpu_state.ex_enable,
             ex_state.pc,
             ex_state.branch_enable,
+            ex_state.branch_cond,
             ex_state.sel_op_a,
             ex_state.op_a,
             ex_state.pc,
@@ -168,7 +174,8 @@ void cpu_dump(int signal) {
             mem_state.pc,
             mem_state.write_enable,
             mem_state.alu_result,
-            mem_state.data);
+            mem_state.data
+    );
 
     fprintf(stderr, "\twb(%d) pc=%08x write_enable=%d r%d<-%d(%08x %08x %08x)\n",
             cpu_state.wb_enable,
