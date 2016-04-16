@@ -1,8 +1,8 @@
 #include "register.h"
 
-#include "wb_stage.h"
-#include "mem_stage.h"
 #include "ex_stage.h"
+#include "mem_stage.h"
+#include "wb_stage.h"
 
 #include <assert.h>
 
@@ -12,6 +12,8 @@ static struct {
     int in_mem;
     int in_wb;
 } registers[32] = { 0 };
+
+static word_t temp_registers[32] = { 0 };
 
 word_t register_read(address_t reg) {
     assert(reg < 32);
@@ -23,7 +25,7 @@ void register_write(address_t reg, word_t data) {
     assert(reg < 32);
 
     if (reg != 0) {
-        registers[reg].data = data;
+        temp_registers[reg] = data;
     }
 }
 
@@ -61,6 +63,7 @@ void register_dump(void) {
 
 void register_clock(void) {
     for (unsigned i = 1; i < 32; ++i) {
+        registers[i].data = temp_registers[i];
         registers[i].in_wb = wb_state.write_enable && wb_state.dest_register == i;
         registers[i].in_mem = mem_state.wb_write_enable && mem_state.wb_dest_register == i;
         registers[i].in_ex = ex_state.wb_write_enable && ex_state.wb_dest_register == i;
@@ -70,5 +73,5 @@ void register_clock(void) {
 int register_in_use(address_t reg) {
     assert(reg < 32);
 
-    return registers[reg].in_ex || registers[reg].in_mem; // || registers[reg].in_wb;
+    return registers[reg].in_ex || registers[reg].in_mem || registers[reg].in_wb;
 }
