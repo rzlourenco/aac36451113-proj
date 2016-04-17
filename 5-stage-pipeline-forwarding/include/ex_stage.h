@@ -48,13 +48,13 @@ enum {
 };
 
 enum {
-    EX_COND_EQ = 0,
-    EX_COND_NE = 1,
-    EX_COND_LT = 2,
-    EX_COND_LE = 3,
-    EX_COND_GT = 4,
-    EX_COND_GE = 5,
-    EX_COND_ALWAYS = 8,
+    EX_COND_ALWAYS,
+    EX_COND_EQ,
+    EX_COND_NE,
+    EX_COND_LT,
+    EX_COND_LE,
+    EX_COND_GT,
+    EX_COND_GE,
 };
 
 enum {

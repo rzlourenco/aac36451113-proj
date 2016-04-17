@@ -417,7 +417,28 @@ void id_stage(void) {
         }
 
         ex_state.branch_enable = 1;
-        ex_state.branch_cond = br_cond;
+        switch (br_cond) {
+            case 0:
+                ex_state.branch_cond = EX_COND_EQ;
+                break;
+            case 1:
+                ex_state.branch_cond = EX_COND_NE;
+                break;
+            case 2:
+                ex_state.branch_cond = EX_COND_LT;
+                break;
+            case 3:
+                ex_state.branch_cond = EX_COND_LE;
+                break;
+            case 4:
+                ex_state.branch_cond = EX_COND_GT;
+                break;
+            case 5:
+                ex_state.branch_cond = EX_COND_GE;
+                break;
+            default:
+                ABORT_WITH_MSG("should never happen!");
+        }
 
         ex_state.alu_control = EX_ALU_ADD;
         ex_state.is_signed = 1;
