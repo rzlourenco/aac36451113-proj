@@ -13,9 +13,9 @@ struct wb_state_t {
 };
 
 enum {
-    WB_SEL_PC = 0,
-    WB_SEL_EX = 1,
-    WB_SEL_MEM = 2,
+    WB_SEL_PC,
+    WB_SEL_EX,
+    WB_SEL_MEM,
 };
 
 extern struct wb_state_t wb_state;

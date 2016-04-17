@@ -29,22 +29,22 @@ struct ex_state_t {
 };
 
 enum {
-    EX_ALU_ADD = 0,
-    EX_ALU_CMP = 1,
-    EX_ALU_OR = 2,
-    EX_ALU_AND = 3,
-    EX_ALU_XOR = 4,
-    EX_ALU_SHIFT_LEFT = 5,
-    EX_ALU_SHIFT_RIGHT = 6,
-    EX_ALU_MUL = 7,
-    EX_ALU_MULH = 8,
-    EX_ALU_MULHU = 9,
-    EX_ALU_MULHSU = 10,
-    EX_ALU_ADDC = 11,
-    EX_ALU_SUB = 12,
-    EX_ALU_SUBC = 13,
-    EX_ALU_ANDN = 14,
-    EX_ALU_SEXT = 15,
+    EX_ALU_ADD,
+    EX_ALU_CMP,
+    EX_ALU_OR,
+    EX_ALU_AND,
+    EX_ALU_XOR,
+    EX_ALU_SHIFT_LEFT,
+    EX_ALU_SHIFT_RIGHT,
+    EX_ALU_MUL,
+    EX_ALU_MULH,
+    EX_ALU_MULHU,
+    EX_ALU_MULHSU,
+    EX_ALU_ADDC,
+    EX_ALU_SUB,
+    EX_ALU_SUBC,
+    EX_ALU_ANDN,
+    EX_ALU_SEXT,
 };
 
 enum {
@@ -58,8 +58,8 @@ enum {
 };
 
 enum {
-    EX_SELOP_IMM = 0,
-    EX_SELOP_PC = 1,
+    EX_SELOP_IMM,
+    EX_SELOP_PC,
 };
 
 extern struct ex_state_t ex_state;

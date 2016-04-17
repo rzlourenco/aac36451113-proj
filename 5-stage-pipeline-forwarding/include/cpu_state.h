@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common.h"
+
 #include <stddef.h>
 
 struct cpu_state_t {

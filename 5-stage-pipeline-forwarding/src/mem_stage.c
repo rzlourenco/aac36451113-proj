@@ -1,9 +1,9 @@
 #include "mem_stage.h"
 
-#include "cpu_state.h"
-#include "ex_stage.h"
-#include "memory.h"
 #include "wb_stage.h"
+
+#include "cpu_state.h"
+#include "memory.h"
 
 struct mem_state_t mem_state;
 

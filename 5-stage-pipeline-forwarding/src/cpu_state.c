@@ -1,10 +1,11 @@
 #include "cpu_state.h"
 
-#include "ex_stage.h"
-#include "id_stage.h"
 #include "if_stage.h"
+#include "id_stage.h"
+#include "ex_stage.h"
 #include "mem_stage.h"
 #include "wb_stage.h"
+
 #include "register.h"
 
 struct cpu_state_t cpu_state;

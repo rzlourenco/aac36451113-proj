@@ -1,10 +1,10 @@
 #include "id_stage.h"
 
-#include "cpu_state.h"
 #include "ex_stage.h"
-#include "if_stage.h"
-#include "wb_stage.h"
 #include "mem_stage.h"
+#include "wb_stage.h"
+
+#include "cpu_state.h"
 #include "register.h"
 
 #include <assert.h>

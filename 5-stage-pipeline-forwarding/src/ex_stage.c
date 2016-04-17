@@ -1,10 +1,11 @@
 #include "ex_stage.h"
-#include "id_stage.h"
+
+#include "if_stage.h"
+#include "mem_stage.h"
+
 #include "cpu_state.h"
 
 #include <assert.h>
-#include <mem_stage.h>
-#include <if_stage.h>
 
 struct ex_state_t ex_state;
 
@@ -265,13 +266,13 @@ static void branch_control(word_t branch_op, word_t alu_result) {
     int less_than = (s_word_t)branch_op < 0;
     int equal = branch_op == 0;
 
-    if ((ex_state.branch_cond == EX_COND_ALWAYS) ||
-        (ex_state.branch_cond == EX_COND_EQ && equal) ||
-        (ex_state.branch_cond == EX_COND_NE && !equal) ||
-        (ex_state.branch_cond == EX_COND_LT && less_than) ||
-        (ex_state.branch_cond == EX_COND_GT && !less_than) ||
-        (ex_state.branch_cond == EX_COND_LE && (equal || less_than)) ||
-        (ex_state.branch_cond == EX_COND_GE && (equal || !less_than))) {
+    if ((ex_state.branch_cond == EX_COND_ALWAYS)
+        || (ex_state.branch_cond == EX_COND_EQ && equal)
+        || (ex_state.branch_cond == EX_COND_NE && !equal)
+        || (ex_state.branch_cond == EX_COND_LT && less_than)
+        || (ex_state.branch_cond == EX_COND_GT && !less_than)
+        || (ex_state.branch_cond == EX_COND_LE && (equal || less_than))
+        || (ex_state.branch_cond == EX_COND_GE && (equal || !less_than))) {
 
         mem_state.if_branch_target = alu_result;
         mem_state.if_branch = 1;

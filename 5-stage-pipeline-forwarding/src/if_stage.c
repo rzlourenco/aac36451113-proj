@@ -1,8 +1,8 @@
+#include "if_stage.h"
+
 #include "id_stage.h"
 
 #include "cpu_state.h"
-#include "if_stage.h"
-#include "mem_stage.h"
 #include "memory.h"
 
 void if_stage(void) {

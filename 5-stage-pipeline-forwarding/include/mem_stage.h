@@ -20,9 +20,9 @@ struct mem_state_t {
 };
 
 enum {
-    MEM_BYTE = 0,
-    MEM_HALF = 1,
-    MEM_WORD = 2,
+    MEM_BYTE,
+    MEM_HALF,
+    MEM_WORD,
 };
 
 extern struct mem_state_t mem_state;
