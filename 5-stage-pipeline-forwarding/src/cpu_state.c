@@ -67,47 +67,63 @@ void clock(void) {
         cpu_state.id_stall = 0;
     }
 
-    struct id_state_t old_id_state = id_state, new_id_state = id_state;
-    struct ex_state_t old_ex_state = ex_state, new_ex_state = ex_state;
-    struct mem_state_t old_mem_state = mem_state, new_mem_state = mem_state;
-    struct wb_state_t old_wb_state = wb_state, new_wb_state = wb_state;
+    struct id_state_t old_id_state = id_state, new_id_state = {0};
+    struct ex_state_t old_ex_state = ex_state, new_ex_state = {0};
+    struct mem_state_t old_mem_state = mem_state, new_mem_state = {0};
+    struct wb_state_t old_wb_state = wb_state, new_wb_state = {0};
 
-    if (cpu_state.if_enable) {
-        if_stage();
 
-        new_id_state = id_state;
-        id_state = old_id_state;
-    }
+    if (cpu_state.wb_enable) {
+        cpu_state.wb_enable = 0;
 
-    if (cpu_state.id_enable) {
-        id_stage();
-
-        new_ex_state = ex_state;
-        ex_state = old_ex_state;
-    }
-
-    if (cpu_state.ex_enable) {
-        ex_stage();
-
-        new_mem_state = mem_state;
-        mem_state = old_mem_state;
+        wb_stage();
     }
 
     if (cpu_state.mem_enable) {
+        cpu_state.wb_enable = 1;
+        cpu_state.mem_enable = 0;
+
+        wb_state = (struct wb_state_t){0};
         mem_stage();
 
         new_wb_state = wb_state;
         wb_state = old_wb_state;
     }
 
-    if (cpu_state.wb_enable) {
-        wb_stage();
+    if (cpu_state.ex_enable) {
+        cpu_state.mem_enable = 1;
+        cpu_state.ex_enable = 0;
+
+        mem_state = (struct mem_state_t){0};
+        ex_stage();
+
+        new_mem_state = mem_state;
+        mem_state = old_mem_state;
     }
 
-    cpu_state.wb_enable = cpu_state.mem_enable;
-    cpu_state.mem_enable = cpu_state.ex_enable;
-    cpu_state.ex_enable = cpu_state.id_enable && !cpu_state.id_stall;
-    cpu_state.id_enable = cpu_state.id_stall || (cpu_state.if_enable && cpu_state.if_stalls == 0);
+    if (cpu_state.id_enable) {
+        cpu_state.ex_enable = 1;
+        cpu_state.id_enable = 0;
+
+        ex_state = (struct ex_state_t){0};
+        id_stage();
+
+        if (cpu_state.id_stall)
+            cpu_state.ex_enable = 0;
+
+        new_ex_state = ex_state;
+        ex_state = old_ex_state;
+    }
+
+    if (cpu_state.if_enable) {
+        cpu_state.id_enable = 1;
+
+//         id_state = (struct id_state_t){0};
+        if_stage();
+
+        new_id_state = id_state;
+        id_state = old_id_state;
+    }
 
     id_state = new_id_state;
     ex_state = new_ex_state;
@@ -137,10 +153,11 @@ void cpu_dump(int signal) {
             cpu_state.if_stalls,
             cpu_state.has_delayed_branch);
 
-    fprintf(stderr, "\tif(%d) if_branch=%d if_branch_target=%08x\n",
+    fprintf(stderr, "\tif(%d) pc<-%d(%08x %08x)\n",
             cpu_state.if_enable,
-            mem_state.if_branch,
-            mem_state.if_branch_target
+            if_state.sel_pc,
+            cpu_state.pc + 4,
+            if_state.branch_pc
     );
 
     fprintf(stderr, "\tid(%d) id_stall=%d pc=%08x instruction=%08x\n",

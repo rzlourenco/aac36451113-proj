@@ -85,9 +85,6 @@ void ex_stage(void) {
     mem_state.data = ex_state.mem_data;
     mem_state.mode = ex_state.mem_mode;
 
-    // Disable control signals that change state
-    mem_state.if_branch = 0;
-
     switch (ex_state.alu_control) {
     case EX_ALU_ADD:
         result = alu_add(op_a, op_b, 0);
@@ -274,7 +271,7 @@ static void branch_control(word_t branch_op, word_t alu_result) {
         || (ex_state.branch_cond == EX_COND_LE && (equal || less_than))
         || (ex_state.branch_cond == EX_COND_GE && (equal || !less_than))) {
 
-        mem_state.if_branch_target = alu_result;
-        mem_state.if_branch = 1;
+        if_state.branch_pc = alu_result;
+        if_state.sel_pc = IF_SELPC_BRANCH;
     }
 }

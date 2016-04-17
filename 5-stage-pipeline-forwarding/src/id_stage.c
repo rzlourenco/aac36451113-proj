@@ -389,7 +389,7 @@ void id_stage(void) {
             trace_call();
         }
 
-        stall_if(3);
+        stall_if(2);
         cpu_state.has_delayed_branch = br_delay;
         msr.i = 0;
 
@@ -422,7 +422,7 @@ void id_stage(void) {
         ex_state.alu_control = EX_ALU_ADD;
         ex_state.is_signed = 1;
 
-        stall_if(3);
+        stall_if(2);
         cpu_state.has_delayed_branch = br_cond_delay;
         msr.i = 0;
 
@@ -445,7 +445,7 @@ void id_stage(void) {
 
         trace_return();
 
-        stall_if(3);
+        stall_if(2);
         cpu_state.has_delayed_branch = 1;
         msr.i = 0;
 
