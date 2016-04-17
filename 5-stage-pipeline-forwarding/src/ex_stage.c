@@ -35,41 +35,14 @@ static word_t alu_xor(word_t op_a, word_t op_b);
 
 static void branch_control(word_t branch_op, word_t alu_result);
 
+static void select_operand(word_t *op, word_t op_imm, int op_sel);
+
 void ex_stage(void) {
     word_t result, op_a, op_b, branch_op;
 
-    switch (ex_state.sel_op_a) {
-        case EX_SELOP_IMM:
-            op_a = ex_state.op_a;
-            break;
-        case EX_SELOP_PC:
-            op_a = ex_state.pc;
-            break;
-        default:
-            ABORT_WITH_MSG("unknown EX_SELOP A value");
-    }
-
-    switch (ex_state.sel_op_b) {
-        case EX_SELOP_IMM:
-            op_b = ex_state.op_b;
-            break;
-        case EX_SELOP_PC:
-            op_b = ex_state.pc;
-            break;
-        default:
-            ABORT_WITH_MSG("unknown EX_SELOP B value");
-    }
-
-    switch (ex_state.branch_sel_op) {
-        case EX_SELOP_IMM:
-            branch_op = ex_state.branch_op;
-            break;
-        case EX_SELOP_PC:
-            branch_op = ex_state.pc;
-            break;
-        default:
-            ABORT_WITH_MSG("unknown EX_SELOP BRANCH value");
-    }
+    select_operand(&op_a, ex_state.op_a, ex_state.sel_op_a);
+    select_operand(&op_b, ex_state.op_b, ex_state.sel_op_b);
+    select_operand(&branch_op, ex_state.branch_op, ex_state.branch_sel_op);
 
     flags.carry = flags.negative = flags.zero = 0;
 
@@ -273,5 +246,20 @@ static void branch_control(word_t branch_op, word_t alu_result) {
 
         if_state.branch_pc = alu_result;
         if_state.sel_pc = IF_SELPC_BRANCH;
+    }
+}
+
+static void select_operand(word_t *op, word_t op_imm, int op_sel) {
+    assert(op != NULL);
+
+    switch (op_sel) {
+        case EX_SELOP_IMM:
+            *op = op_imm;
+            break;
+        case EX_SELOP_PC:
+            *op = ex_state.pc;
+            break;
+        default:
+            ABORT_WITH_MSG("unknown EX_SELOP value");
     }
 }
