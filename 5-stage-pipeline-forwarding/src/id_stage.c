@@ -90,6 +90,8 @@ void id_stage(void) {
         ex_state.wb_write_enable = 1;
         ex_state.wb_select_data = WB_SEL_EX;
 
+        ex_state.carry = msr.c;
+
         if (opcode & 0x01)
             ex_state.alu_control = use_carry ? EX_ALU_SUBC : EX_ALU_SUB;
         else
@@ -100,9 +102,17 @@ void id_stage(void) {
         // We're dealing with a CMP/CMPU
         if (opcode == 0x05 && (function == 1 || function == 3)) {
             // CMP has swapped operands
-            word_t tmp = ex_state.op_a;
-            ex_state.op_a = ex_state.op_b;
-            ex_state.op_b = tmp;
+            {
+                word_t tmp = ex_state.op_a;
+                ex_state.op_a = ex_state.op_b;
+                ex_state.op_b = tmp;
+            }
+
+            {
+                int tmp = ex_state.sel_op_a;
+                ex_state.sel_op_a = ex_state.sel_op_b;
+                ex_state.sel_op_b = tmp;
+            }
 
             ex_state.is_signed = function == 1;
             ex_state.alu_control = EX_ALU_CMP;
@@ -283,10 +293,14 @@ void id_stage(void) {
     {
         if (operand_fetch(ra, &ex_state.op_a, &ex_state.sel_op_a))
             return;
-        if (is_imm_instr)
+        if (is_imm_instr) {
             operand_immediate(imm16, &ex_state.op_b, &ex_state.sel_op_b);
-        else if (operand_fetch(rb, &ex_state.op_b, &ex_state.sel_op_b))
+        }
+        else if (operand_fetch(rb, &ex_state.op_b, &ex_state.sel_op_b)) {
             return;
+        }
+
+        register_mark_load(rd);
 
         ex_state.wb_dest_register = rd;
         ex_state.wb_select_data = WB_SEL_MEM;
@@ -491,17 +505,37 @@ static word_t extend_immediate(word_t imm) {
 }
 
 static int operand_fetch(address_t reg, word_t *op, int *op_sel) {
-    if (register_in_use(reg)) {
+    struct register_status_t status = register_status(reg);
+    int stall = 0;
+    int selop = EX_SELOP_IMM;
+
+    stall = status.in_ex || status.in_mem || status.in_wb;
+
+    if (status.in_ex) {
+        if (!status.is_ex_load && op_sel != NULL) {
+            selop = EX_SELOP_FWD_MEM;
+            stall = 0;
+        }
+    }
+    else if (status.in_mem) {
+        if (op_sel != NULL) {
+            selop = EX_SELOP_FWD_WB;
+            stall = 0;
+        }
+    }
+    else if (status.in_wb) {
+        // Check here to simplify the code. We must stall.
+    }
+
+    if (stall)
         stall_id();
-        return 1;
-    }
+    else
+        *op = register_read(reg);
 
-    *op = register_read(reg);
-    if (op_sel != NULL) {
-        *op_sel = EX_SELOP_IMM;
-    }
+    if (op_sel != NULL)
+        *op_sel = selop;
 
-    return 0;
+    return stall;
 }
 
 static int operand_immediate(word_t imm, word_t *op, int *op_sel) {

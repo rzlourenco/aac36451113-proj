@@ -83,7 +83,7 @@ void clock(void) {
         cpu_state.wb_enable = 1;
         cpu_state.mem_enable = 0;
 
-        wb_state = (struct wb_state_t){0};
+        //wb_state = (struct wb_state_t){0};
         mem_stage();
 
         new_wb_state = wb_state;
@@ -94,7 +94,7 @@ void clock(void) {
         cpu_state.mem_enable = 1;
         cpu_state.ex_enable = 0;
 
-        mem_state = (struct mem_state_t){0};
+        //mem_state = (struct mem_state_t){0};
         ex_stage();
 
         new_mem_state = mem_state;
@@ -105,7 +105,7 @@ void clock(void) {
         cpu_state.ex_enable = 1;
         cpu_state.id_enable = 0;
 
-        ex_state = (struct ex_state_t){0};
+        //ex_state = (struct ex_state_t){0};
         id_stage();
 
         if (cpu_state.id_stall)
@@ -118,7 +118,7 @@ void clock(void) {
     if (cpu_state.if_enable) {
         cpu_state.id_enable = 1;
 
-//         id_state = (struct id_state_t){0};
+        //id_state = (struct id_state_t){0};
         if_stage();
 
         new_id_state = id_state;
@@ -168,9 +168,9 @@ void cpu_dump(int signal) {
     );
 
     fprintf(stderr, "\tex(%d) pc=%08x branch_enable=%d branch_cond=%d\n"
-                    "\t      op_a<-%d(%08x %08x)\n"
-                    "\t      op_b<-%d(%08x %08x)\n"
-                    "\t      branch_op<-%d(%08x %08x)\n"
+                    "\t      op_a<-%d(%08x %08x %08x %08x)\n"
+                    "\t      op_b<-%d(%08x %08x %08x %08x)\n"
+                    "\t      branch_op<-%d(%08x %08x %08x %08x)\n"
             ,
             cpu_state.ex_enable,
             ex_state.pc,
@@ -179,12 +179,18 @@ void cpu_dump(int signal) {
             ex_state.sel_op_a,
             ex_state.op_a,
             ex_state.pc,
+            mem_state.alu_result,
+            wb_get_result(),
             ex_state.sel_op_b,
             ex_state.op_b,
             ex_state.pc,
+            mem_state.alu_result,
+            wb_get_result(),
             ex_state.branch_sel_op,
             ex_state.branch_op,
-            ex_state.pc
+            ex_state.pc,
+            mem_state.alu_result,
+            wb_get_result()
     );
 
     fprintf(stderr, "\tmem(%d) pc=%08x write_enable=%d address=%08x data=%08x\n",

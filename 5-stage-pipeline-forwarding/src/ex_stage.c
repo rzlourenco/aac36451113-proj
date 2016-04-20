@@ -2,6 +2,7 @@
 
 #include "if_stage.h"
 #include "mem_stage.h"
+#include "wb_stage.h"
 
 #include "cpu_state.h"
 
@@ -63,13 +64,13 @@ void ex_stage(void) {
         result = alu_add(op_a, op_b, 0);
         break;
     case EX_ALU_ADDC:
-        result = alu_add(op_a, op_b, msr.c);
+        result = alu_add(op_a, op_b, ex_state.carry);
         break;
     case EX_ALU_SUB:
         result = alu_add(~op_a, op_b, 1);
         break;
     case EX_ALU_SUBC:
-        result = alu_add(~op_a, op_b, msr.c);
+        result = alu_add(~op_a, op_b, ex_state.carry);
         break;
     case EX_ALU_CMP:
         result = alu_cmp(op_a, op_b);
@@ -252,12 +253,28 @@ static void branch_control(word_t branch_op, word_t alu_result) {
 static void select_operand(word_t *op, word_t op_imm, int op_sel) {
     assert(op != NULL);
 
+//    fprintf(stderr,
+//            "pc:%08x op<-%d(%08x %08x %08x %08x)\n",
+//            ex_state.pc,
+//            op_sel,
+//            op_imm,
+//            ex_state.pc,
+//            mem_state.alu_result,
+//            wb_get_result()
+//    );
+
     switch (op_sel) {
         case EX_SELOP_IMM:
             *op = op_imm;
             break;
         case EX_SELOP_PC:
             *op = ex_state.pc;
+            break;
+        case EX_SELOP_FWD_MEM:
+            *op = mem_state.alu_result;
+            break;
+        case EX_SELOP_FWD_WB:
+            *op = wb_get_result();
             break;
         default:
             ABORT_WITH_MSG("unknown EX_SELOP value");

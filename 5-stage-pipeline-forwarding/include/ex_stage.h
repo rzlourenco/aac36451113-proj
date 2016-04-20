@@ -11,6 +11,7 @@ struct ex_state_t {
     int is_signed;
     int carry_write_enable;
     int use_carry;
+    int carry;
 
     int branch_enable;
     int branch_cond;
@@ -60,6 +61,8 @@ enum {
 enum {
     EX_SELOP_IMM,
     EX_SELOP_PC,
+    EX_SELOP_FWD_MEM,
+    EX_SELOP_FWD_WB,
 };
 
 extern struct ex_state_t ex_state;

@@ -21,3 +21,6 @@ enum {
 extern struct wb_state_t wb_state;
 
 void wb_stage(void);
+
+word_t wb_get_result(void);
+
