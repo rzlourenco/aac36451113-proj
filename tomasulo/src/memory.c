@@ -1,7 +1,5 @@
 #include "memory.h"
 
-#include "cpu_state.h"
-
 #include <assert.h>
 #include <string.h>
 
@@ -55,6 +53,11 @@ void memory_write(address_t address, word_t data_in) {
     } else {
         mem[real_address(address)] = data_in;
     }
+}
+
+
+void memory_clock(void) {
+
 }
 
 static inline address_t real_address(address_t address) {

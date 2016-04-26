@@ -1,4 +1,4 @@
-#include "cpu_state.h"
+#include "cpu.h"
 #include "memory.h"
 
 #include <assert.h>
@@ -7,8 +7,6 @@
 #include <signal.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
-#include <unistd.h>
-
 
 int little_endian;
 
@@ -155,7 +153,7 @@ int main(int argc, char **argv) {
         exit(2);
     }
 
-    init_cpu();
+    cpu_init();
     init_memory(mem_bits);
     flash_memory(rom, (size_t)rom_stat.st_size);
 
@@ -177,7 +175,7 @@ int main(int argc, char **argv) {
     cpu_dump(0);
 
     while (!cpu_halt()) {
-        clock();
+        cpu_clock();
         cpu_dump(0);
 
         if (debug) {
