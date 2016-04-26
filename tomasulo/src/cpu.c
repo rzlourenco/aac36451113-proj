@@ -12,9 +12,6 @@
 
 struct cpu_t cpu_state;
 
-address_t new_pc;
-int has_new_pc;
-
 void cpu_init(void) {
     bp_init();
 }
@@ -35,16 +32,10 @@ void cpu_clock(void) {
 
     rob_clock();
     cdb_clock();
-
-    if (has_new_pc) {
-        cpu_state.pc = new_pc;
-        has_new_pc = 0;
-    }
 }
 
 void cpu_update_pc(address_t pc) {
-    has_new_pc = 1;
-    new_pc = pc;
+
 }
 
 void cpu_dump(int signal) {
