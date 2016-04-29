@@ -3,6 +3,7 @@
 #include "branch_predictor.h"
 #include "cdb.h"
 #include "commit.h"
+#include "dispatch.h"
 #include "execute.h"
 #include "fetch.h"
 #include "issue.h"
@@ -11,20 +12,24 @@
 #include "rob.h"
 
 struct cpu_t cpu_state;
-
 void cpu_init(void) {
+    cpu_state.halt = 0;
+
     bp_init();
 }
 
 int cpu_halt(void) {
-    return 1;
+    return cpu_state.halt;
 }
 
 void cpu_clock(void) {
-    commit_clock();
-    execute_clock();
-    issue_clock();
+    fprintf(stderr, "%s\n", __func__);
+
     fetch_clock();
+    issue_clock();
+    dispatch_clock();
+    execute_clock();
+    commit_clock();
 
     bp_clock();
     memory_clock();
@@ -32,6 +37,8 @@ void cpu_clock(void) {
 
     rob_clock();
     cdb_clock();
+
+    cpu_state.halt = 1;
 }
 
 void cpu_update_pc(address_t pc) {

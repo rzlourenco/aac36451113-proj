@@ -2,9 +2,12 @@
 
 #include "common.h"
 
-word_t register_read(address_t reg);
-void register_write(address_t reg, word_t data);
+word_t register_read_gpr(word_t reg, word_t *data);
 
-void register_dump(void);
+word_t register_read_spr(word_t reg, word_t *data);
+
+enum {
+    REGISTER_SPR_MSR,
+};
 
 void register_clock(void);

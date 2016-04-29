@@ -5,11 +5,11 @@ SRCS := $(wildcard *.c)
 SRCS := $(SRCS:%.c=%)
 SRCS := $(filter-out crt0,$(SRCS))
 
-CC      := mb-gcc
-AS      := mb-as
-LD      := mb-ld
-OBJCOPY := mb-objcopy
-OBJDUMP := mb-objdump
+CC      := gcc
+AS      := as
+LD      := ld
+OBJCOPY := objcopy
+OBJDUMP := objdump
 
 #Xilinx Compiler flags (XILFLAGS):
 #-mxl-soft-div -> Use Soft Divider
@@ -21,23 +21,32 @@ CFLAGS   := -std=c99 -pedantic -Ofast
 LDFLAGS  := -Wl,-defsym,_STACK_SIZE=0x4000 -Wl,-defsym,_HEAP_SIZE=0x4000
 
 .PHONY: all
-all: $(SRCS:%=%.elf) $(SRCS:%=%.S) $(SRCS:%=%.bin) $(SRCS:%=%.dump) $(SRCS:%=%.intel)
+all: intel mb
+
+.PHONY: intel
+intel: $(SRCS:%=%.intel) $(SRCS:%=%.intel.dump) $(SRCS:%=%.intel.bin) 
+
+.PHONY: mb
+mb: $(SRCS:%=%.mb) $(SRCS:%=%.mb.dump) $(SRCS:%=%.mb.bin) 
 
 .PHONY: clean
 clean:
-	rm -f *.bin *.dump *.elf *.S *.intel
-
-%.S: %.c
-	$(CC) $(XILFLAGS) $(CFLAGS) $(LDFLAGS) -S $< -o $@
+	rm -f *.bin *.dump *.intel *.mb
 
 %.intel: %.c
-	gcc $(CFLAGS) -Dxil_printf=printf $< -o $@
+	$(CC) $(CFLAGS) -Dxil_printf=printf $< -o $@
 
-%.elf: %.c
-	$(CC) $(XILFLAGS) $(CFLAGS) $(LDFLAGS) $< -o $@
-
-%.bin: %.elf
+%.intel.bin: %.intel
 	$(OBJCOPY) -O binary $< $@
 
-%.dump: %.elf
+%.intel.dump: %.intel
 	$(OBJDUMP) -DSCz $< > $@
+
+%.mb: %.c
+	mb-$(CC) $(XILFLAGS) $(CFLAGS) $(LDFLAGS) $< -o $@
+
+%.mb.bin: %.mb
+	mb-$(OBJCOPY) -O binary $< $@
+
+%.mb.dump: %.mb
+	mb-$(OBJDUMP) -DSCz $< > $@

@@ -19,7 +19,7 @@ void fetch_clock(void) {
         instr = memory_read(pc);
         predicted = !bp_branch_predict(pc, &bp_target);
 
-        if (issue_fetch(pc, instr, predicted, bp_target))
+        if (issue_queue_instruction(pc, instr, predicted, bp_target))
             return;
 
         if (predicted)

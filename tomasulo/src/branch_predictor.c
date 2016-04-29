@@ -1,7 +1,10 @@
 #include "branch_predictor.h"
 
 enum {
-    BTB_PRED_BITS = 3,
+    BTB_PRED_BITS = 2,
+    BTB_PRED_SAT_MAX = (1<<BTB_PRED_BITS)-1,
+    BTB_PRED_SAT_MIN = 0,
+    BTB_PRED_TAKEN = 1 + (BTB_PRED_SAT_MAX>>1),
 
     BTB_INDEX_BITS = 12,
     BTB_SIZE = 1<<BTB_INDEX_BITS,
@@ -38,11 +41,25 @@ int bp_branch_predict(word_t pc, word_t *target) {
 }
 
 void bp_branch_taken(word_t pc, word_t target) {
+    word_t index = get_index(pc);
+    word_t tag = get_tag(pc);
 
+    btb[index].tag = tag;
+    btb[index].target = target;
+
+    if (btb[index].bits < BTB_PRED_SAT_MAX)
+        btb[index].bits += 1;
 }
 
 void bp_branch_not_taken(word_t pc, word_t target) {
+    word_t index = get_index(pc);
+    word_t tag = get_tag(pc);
 
+    btb[index].tag = tag;
+    btb[index].target = target;
+
+    if (btb[index].bits > BTB_PRED_SAT_MIN)
+        btb[index].bits -= 1;
 }
 
 void bp_init(void) {
@@ -61,7 +78,7 @@ void bp_clock(void) {
 static int predict(size_t index) {
     assert(index < BTB_SIZE);
 
-    return BITS(btb[index].bits, BTB_PRED_BITS-1u, BTB_PRED_BITS-1u);
+    return btb[index].bits >= BTB_PRED_TAKEN;
 }
 
 static word_t get_index(word_t pc) {

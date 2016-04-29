@@ -1,8 +1,7 @@
 examples/*.bin
 examples/*.dump
-examples/*.elf
-examples/*.S
 examples/*.intel
+examples/*.mb
 build/*
 .idea/*
 *.user

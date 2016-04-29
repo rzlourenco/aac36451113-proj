@@ -41,8 +41,6 @@ void usage(char const *argv0) {
 }
 
 int main(int argc, char **argv) {
-    assert(sizeof(struct msr_t) == sizeof(word_t));
-
     int opt;
     size_t mem_bits = 20;
     char *rom_file = NULL;
@@ -193,9 +191,9 @@ int main(int argc, char **argv) {
     debug = 1;
     cpu_dump(0);
 
-    fprintf(stderr, "Total cycles: %lu\n", cpu_state.total_cycles);
-    fprintf(stderr, "Total instructions: %lu\n", cpu_state.total_instructions);
-    fprintf(stderr, "IPC: %0.2f\n", (double)cpu_state.total_instructions / (double)cpu_state.total_cycles);
+    fprintf(stderr, "Total cycles: %lu\n", cpu_state.stats.cycles);
+    fprintf(stderr, "Total instructions: %lu\n", cpu_state.stats.instructions);
+    fprintf(stderr, "IPC: %0.2f\n", (double)cpu_state.stats.instructions / (double)cpu_state.stats.cycles);
 
     return 0;
 }

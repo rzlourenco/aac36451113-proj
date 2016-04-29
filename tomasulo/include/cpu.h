@@ -5,15 +5,17 @@
 #include <stddef.h>
 
 struct cpu_t {
-    uint64_t total_cycles;
-    uint64_t total_instructions;
+    struct {
+        uint64_t cycles;
+        uint64_t instructions;
+
+        uint64_t cdb_stalls;
+        uint64_t issue_stalls;
+    } stats;
+
+    int halt;
 
     address_t pc;
-};
-
-struct msr_t {
-    word_t c : 1;
-    word_t i : 1;
 };
 
 extern struct cpu_t cpu_state;

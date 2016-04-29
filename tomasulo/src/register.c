@@ -3,27 +3,32 @@
 #include <assert.h>
 
 enum {
-    REGISTER_COUNT = 32,
+    GPR_COUNT = 32,
+    SPR_COUNT = 18,
 };
 
 static struct {
+    word_t tag;
     word_t data;
-} registers[REGISTER_COUNT] = { 0 };
+}
+registers_r[GPR_COUNT + SPR_COUNT] = { 0 },
+registers_w[GPR_COUNT + SPR_COUNT] = { 0 };
 
-static word_t temp_registers[REGISTER_COUNT] = { 0 };
-
-word_t register_read(address_t reg) {
-    assert(reg < REGISTER_COUNT);
-
-    return 0;
+static word_t register_read(word_t reg, word_t *data) {
+    *data = registers_r[reg].data;
+    return registers_r[reg].tag;
 }
 
-void register_write(address_t reg, word_t data) {
-    assert(reg < REGISTER_COUNT);
+word_t register_read_gpr(word_t reg, word_t *data) {
+    assert(reg < GPR_COUNT);
+
+    return register_read(reg, data);
 }
 
-void register_dump(void) {
+word_t register_read_spr(word_t reg, word_t *data) {
+    assert(reg < SPR_COUNT);
 
+    return register_read(reg + GPR_COUNT, data);
 }
 
 void register_clock(void) {

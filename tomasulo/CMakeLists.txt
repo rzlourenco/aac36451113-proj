@@ -13,6 +13,7 @@ set(INCLUDE_FILES
         include/branch_predictor.h
         include/cdb.h
         include/commit.h
+        include/dispatch.h
         include/execute.h
         include/fetch.h
         include/issue.h
@@ -30,6 +31,7 @@ set(SOURCE_FILES
         src/branch_predictor.c
         src/cdb.c
         src/commit.c
+        src/dispatch.c
         src/execute.c
         src/fetch.c
         src/issue.c
