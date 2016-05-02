@@ -16,6 +16,7 @@ registers_w[GPR_COUNT + SPR_COUNT] = { 0 };
 
 static word_t register_read(word_t reg, word_t *data) {
     *data = registers_r[reg].data;
+
     return registers_r[reg].tag;
 }
 

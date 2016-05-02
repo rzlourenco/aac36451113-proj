@@ -82,10 +82,6 @@ union mb_instr {
     word_t raw;
 };
 
-static word_t extend_immediate(sh_word_t immediate) {
-    return 0;
-}
-
 void dispatch_clock(void) {
 
 }

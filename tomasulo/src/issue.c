@@ -3,53 +3,73 @@
 #include "dispatch.h"
 #include "rob.h"
 
-static struct fetched_instr {
+enum {
+    BUFFER_SIZE = 2*ISSUE_WIDTH,
+};
+
+static struct fetched {
     address_t pc;
     word_t instr;
 
     int br_prediction;
-    int br_taken;
     address_t br_target;
-} fetched[ISSUE_WIDTH];
 
-static int fetch_count = 0;
+    int in_rob;
+    rob_tag_t rob_tag;
+}
+queue[BUFFER_SIZE];
 
-int issue_queue_instruction(address_t pc, word_t instr, int predicted, address_t target) {
-    if (fetch_count >= ISSUE_WIDTH)
+static size_t
+queue_head = 0,
+queue_tail = 0,
+queue_count = 0;
+
+int
+issue_queue_instruction(address_t pc, word_t instr, int predicted, address_t target)
+{
+    if (queue_count == BUFFER_SIZE)
         return 1;
 
-    fetched[fetch_count].pc = pc;
-    fetched[fetch_count].instr = instr;
+    queue[queue_tail] = (struct fetched){
+        .pc = pc,
+        .instr = instr,
+        .br_prediction = predicted,
+        .br_target = target,
+        .in_rob = 0,
+        .rob_tag = ROB_TAG_INVALID,
+    };
 
-    fetched[fetch_count].br_prediction = predicted;
-    fetched[fetch_count].br_taken = 0;
-    fetched[fetch_count].br_target = target;
+    queue_tail = (queue_tail + 1) % BUFFER_SIZE;
+    queue_count += 1;
 
-    fetch_count++;
     return 0;
 }
 
-static int has_instruction(void) {
-    return fetch_count > 0;
+static void
+pop_instruction(void)
+{
+    assert(queue_count > 0);
+
+    queue_head = (queue_head + 1) % BUFFER_SIZE;
+    queue_count -= 1;
 }
 
-static struct fetched_instr get_instruction(void) {
-    assert(has_instruction());
+void
+issue_clock(void)
+{
+    while (queue_count > 0) {
+        struct fetched *head = &queue[queue_head];
 
-    return fetched[0];
-}
+        if (head->in_rob == 0) {
+            if (rob_write(head->pc, head->br_prediction, head->br_target, &head->rob_tag))
+                return;
+        }
 
-static void pop_instruction(void) {
-    for (int i = 1; i < ISSUE_WIDTH; ++i) {
-        fetched[i - 1] = fetched[i];
-        fetched[i] = (struct fetched_instr) {0};
-    }
+        head->in_rob = 1;
 
-    fetch_count--;
-}
+        if (dispatch_queue_instruction(head->rob_tag, head->instr))
+            return;
 
-void issue_clock(void) {
-    while (has_instruction()) {
-        struct fetched_instr fetched = get_instruction();
+        pop_instruction();
     }
 }
