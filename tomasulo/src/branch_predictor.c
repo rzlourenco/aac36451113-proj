@@ -14,49 +14,49 @@ enum {
 
 static struct {
     word_t tag : BTB_TAG_BITS;
-    word_t target;
     word_t bits : BTB_PRED_BITS;
+    word_t delayed : 1;
+    word_t target;
 } btb[BTB_SIZE];
-
-
 
 static int predict(size_t index);
 
 static word_t get_index(word_t pc);
 static word_t get_tag(word_t pc);
 
-
-int bp_branch_predict(word_t pc, word_t *target) {
+void bp_branch_predict(word_t pc, int *taken, int *delayed, word_t *target) {
     word_t index = get_index(pc);
     word_t tag = get_tag(pc);
 
-    if (btb[index].tag != tag)
-        return 1;
+    if (btb[index].tag != tag) {
+        *taken = 0;
+        return;
+    }
 
-    if (!predict(index))
-        return 1;
-
+    *taken = btb[index].bits >= BTB_PRED_TAKEN;
+    *delayed = btb[index].delayed;
     *target = btb[index].target;
-    return 0;
 }
 
-void bp_branch_taken(word_t pc, word_t target) {
+void bp_branch_taken(word_t pc, word_t target, int delayed) {
     word_t index = get_index(pc);
     word_t tag = get_tag(pc);
 
     btb[index].tag = tag;
     btb[index].target = target;
+    btb[index].delayed = (word_t)(delayed != 0);
 
     if (btb[index].bits < BTB_PRED_SAT_MAX)
         btb[index].bits += 1;
 }
 
-void bp_branch_not_taken(word_t pc, word_t target) {
+void bp_branch_not_taken(word_t pc, word_t target, int delayed) {
     word_t index = get_index(pc);
     word_t tag = get_tag(pc);
 
     btb[index].tag = tag;
     btb[index].target = target;
+    btb[index].delayed = (word_t)(delayed != 0);
 
     if (btb[index].bits > BTB_PRED_SAT_MIN)
         btb[index].bits -= 1;
@@ -73,12 +73,6 @@ void bp_init(void) {
 
 void bp_clock(void) {
 
-}
-
-static int predict(size_t index) {
-    assert(index < BTB_SIZE);
-
-    return btb[index].bits >= BTB_PRED_TAKEN;
 }
 
 static word_t get_index(word_t pc) {

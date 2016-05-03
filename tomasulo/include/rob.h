@@ -36,5 +36,8 @@ enum {
 int
 rob_write(address_t pc, int br_pred, address_t target, rob_tag_t *tag);
 
+struct rob_entry *
+rob_get_entry(rob_tag_t tag);
+
 void
 rob_clock(void);

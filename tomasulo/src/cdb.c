@@ -5,28 +5,28 @@
 #include "cpu.h"
 
 static struct {
-    word_t tag;
+    rob_tag_t tag;
     word_t data;
-} cdbwdata[ISSUE_WIDTH], cdbrdata[ISSUE_WIDTH];
+} wdata[ISSUE_WIDTH], rdata[ISSUE_WIDTH];
 
-static int filled_w = 0, filled_r = 0;
+static int wsize = 0, rsize = 0;
 
-int cdb_write(word_t tag, word_t data) {
-    if (filled_w >= ISSUE_WIDTH) {
+int cdb_write(rob_tag_t tag, word_t data) {
+    if (wsize >= ISSUE_WIDTH) {
         cpu_state.stats.cdb_stalls++;
         return 1;
     }
 
-    cdbwdata[filled_w].tag = tag;
-    cdbwdata[filled_w].data = data;
+    wdata[wsize].tag = tag;
+    wdata[wsize].data = data;
 
     return 0;
 }
 
-int cdb_read(word_t tag, word_t *data) {
-    for (int i = 0; i < filled_r; ++i) {
-        if (cdbrdata[i].tag == tag) {
-            *data = cdbrdata[i].data;
+int cdb_read(rob_tag_t tag, word_t *data) {
+    for (int i = 0; i < rsize; ++i) {
+        if (rdata[i].tag == tag) {
+            *data = rdata[i].data;
             return 0;
         }
     }
@@ -35,10 +35,10 @@ int cdb_read(word_t tag, word_t *data) {
 }
 
 void cdb_clock(void) {
-    filled_r = filled_w;
-    filled_w = 0;
+    rsize = wsize;
+    wsize = 0;
 
     for (int i = 0; i < ISSUE_WIDTH; ++i) {
-        cdbrdata[i] = cdbwdata[i];
+        rdata[i] = wdata[i];
     }
 }

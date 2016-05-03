@@ -13,7 +13,7 @@ enum {
 };
 
 static struct {
-    word_t tag;
+    rob_tag_t tag;
     word_t instr;
 } queue[QUEUE_SIZE];
 
@@ -71,7 +71,7 @@ union mb_instr {
     };
     struct {
         word_t _7: 16;
-        sh_word_t imm16: 16;
+        word_t imm16: 16;
     };
     struct {
         word_t _8: 8;
@@ -84,4 +84,6 @@ union mb_instr {
 
 void dispatch_clock(void) {
 
+    // add r1, r2, r3
+    // addc r5, r0, r0
 }

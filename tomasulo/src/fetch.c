@@ -10,20 +10,20 @@
 
 
 void fetch_clock(void) {
-    address_t pc, bp_target;
+    address_t pc, target;
     word_t instr;
-    int predicted = 0, issue = 0;
+    int taken = 0, delayed = 0, issue = 0;
 
     while (issue < ISSUE_WIDTH) {
         pc = cpu_state.pc;
         instr = memory_read(pc);
-        predicted = !bp_branch_predict(pc, &bp_target);
+        bp_branch_predict(pc, &taken, &delayed, &target);
 
-        if (issue_queue_instruction(pc, instr, predicted, bp_target))
+        if (issue_queue_instruction(pc, instr, taken, delayed, target))
             return;
 
-        if (predicted)
-            pc = bp_target;
+        if (taken)
+            pc = target;
         else
             pc += sizeof(pc);
 
