@@ -22,6 +22,12 @@ address_t mem_trace;
 
 FILE *trace_functions;
 
+void sig_handler(int signal) {
+    cpu_halt();
+
+    if (signal != SIGINT)
+        exit(signal);
+}
 
 void usage(char const *argv0) {
     fprintf(stderr, "Usage: %s [options] rom_file\n", argv0);
@@ -160,28 +166,24 @@ int main(int argc, char **argv) {
         exit(2);
     }
 
-    struct sigaction action = { .sa_handler = cpu_dump, .sa_flags = 0 };
-    if (sigaction(SIGABRT, &action, NULL) < 0 || sigaction(SIGINT, &action, NULL) < 0) {
+    struct sigaction action = { .sa_handler = sig_handler, .sa_flags = 0 };
+    if (sigaction(SIGINT, &action, NULL) < 0) {
         perror("sigaction");
         exit(2);
     }
 
     if (trace_functions) {
-        fprintf(trace_functions, "%08x: %08x\n", cpu_state.pc, cpu_state.pc);
+        fprintf(trace_functions, "%08x: %08x\n", cpu_get_pc(), cpu_get_pc());
     }
 
-    cpu_dump(0);
-
-    while (!cpu_halt()) {
+    while (!cpu_has_halted()) {
+        cpu_dump();
         cpu_clock();
-        cpu_dump(0);
 
         if (debug) {
             (void) getchar();
         }
     }
-
-    cpu_dump(0);
 
     if (trace_functions) {
         fflush(trace_functions);
@@ -189,11 +191,24 @@ int main(int argc, char **argv) {
     }
 
     debug = 1;
-    cpu_dump(0);
+    cpu_dump();
 
-    fprintf(stderr, "Total cycles: %lu\n", cpu_state.stats.cycles);
-    fprintf(stderr, "Total instructions: %lu\n", cpu_state.stats.instructions);
-    fprintf(stderr, "IPC: %0.2f\n", (double)cpu_state.stats.instructions / (double)cpu_state.stats.cycles);
+    fprintf(stderr, "\n\n");
+    fprintf(stderr, "Total cycles: %lu\n", cpu_stats.cycles);
+    fprintf(stderr, "Total instructions: %lu\n", cpu_stats.instructions);
+    fprintf(stderr, "IPC: %0.2f\n", (double)cpu_stats.instructions / (double)cpu_stats.cycles);
+    fprintf(stderr,
+            "Structural conflicts:\n"
+            "    CDB: %lu\n"
+            "    ROB: %lu\n"
+            "    Issue: %lu\n"
+            "    Dispatch: %lu\n"
+            "    Execute: %lu\n",
+            cpu_stats.sc_cdb,
+            cpu_stats.sc_rob,
+            cpu_stats.sc_issue,
+            cpu_stats.sc_dispatch,
+            0UL);
 
     return 0;
 }

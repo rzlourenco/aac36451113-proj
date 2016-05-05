@@ -13,7 +13,7 @@ static int wsize = 0, rsize = 0;
 
 int cdb_write(rob_tag_t tag, word_t data) {
     if (wsize >= ISSUE_WIDTH) {
-        cpu_state.stats.cdb_stalls++;
+        cpu_stats.sc_cdb += 1;
         return 1;
     }
 
@@ -25,7 +25,7 @@ int cdb_write(rob_tag_t tag, word_t data) {
 
 int cdb_read(rob_tag_t tag, word_t *data) {
     for (int i = 0; i < rsize; ++i) {
-        if (rdata[i].tag == tag) {
+        if (rob_tag_eq(rdata[i].tag, tag)) {
             *data = rdata[i].data;
             return 0;
         }

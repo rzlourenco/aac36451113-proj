@@ -1,37 +1,82 @@
 #include "register.h"
 
+#include "rob.h"
+
 #include <assert.h>
 
 enum {
-    GPR_COUNT = 32,
-    SPR_COUNT = 18,
+    REGISTER_GPR_COUNT = 32,
+    REGISTER_SPR_COUNT = 18,
+    REGISTER_FLAG_COUNT = 1,
+
+    REGISTER_COUNT = REGISTER_GPR_COUNT + REGISTER_SPR_COUNT + REGISTER_FLAG_COUNT,
+
+    REGISTER_GPR_START = 0,
+    REGISTER_SPR_START = REGISTER_GPR_START + REGISTER_GPR_COUNT,
+    REGISTER_FLAG_START = REGISTER_SPR_START + REGISTER_SPR_COUNT,
 };
 
 static struct {
-    word_t tag;
+    rob_tag_t tag;
     word_t data;
 }
-registers_r[GPR_COUNT + SPR_COUNT] = { 0 },
-registers_w[GPR_COUNT + SPR_COUNT] = { 0 };
+registers_r[REGISTER_COUNT] = { 0 },
+registers_w[REGISTER_COUNT] = { 0 };
 
-static word_t register_read(word_t reg, word_t *data) {
-    *data = registers_r[reg].data;
+rob_tag_t
+register_read(reg_t reg, word_t *data)
+{
+    assert(reg_val(reg) < REGISTER_COUNT);
 
-    return registers_r[reg].tag;
+    *data = registers_r[reg_val(reg)].data;
+
+    return registers_r[reg_val(reg)].tag;
 }
 
-word_t register_read_gpr(word_t reg, word_t *data) {
-    assert(reg < GPR_COUNT);
+void
+register_write(reg_t reg, rob_tag_t tag)
+{
+    assert(reg_val(reg) < REGISTER_COUNT);
 
-    return register_read(reg, data);
+    registers_w[reg_val(reg)].tag = tag;
 }
 
-word_t register_read_spr(word_t reg, word_t *data) {
-    assert(reg < SPR_COUNT);
+void
+register_real_write(reg_t reg, word_t data)
+{
+    register_write(reg, ROB_TAG_INVALID);
 
-    return register_read(reg + GPR_COUNT, data);
+    registers_w[reg_val(reg)].data = data;
 }
 
-void register_clock(void) {
+reg_t
+reg_gpr(word_t reg)
+{
+    assert(reg < REGISTER_GPR_COUNT);
 
+    return make_reg(reg + REGISTER_GPR_START);
+}
+
+reg_t
+reg_spr(word_t reg)
+{
+    assert(reg < REGISTER_SPR_COUNT);
+
+    return make_reg(reg + REGISTER_SPR_START);
+}
+
+reg_t
+reg_flag(word_t reg)
+{
+    assert(reg < REGISTER_FLAG_COUNT);
+
+    return make_reg(reg + REGISTER_FLAG_START);
+}
+
+void
+register_clock(void)
+{
+    for (int i = 0; i < REGISTER_COUNT; ++i) {
+        registers_r[i] = registers_w[i];
+    }
 }

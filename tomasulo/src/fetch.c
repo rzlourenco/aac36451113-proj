@@ -8,26 +8,50 @@
 #include "branch_predictor.h"
 #include "issue.h"
 
+static int is_delay_slot = 0;
+static address_t delayed_branch_target = 0;
 
 void fetch_clock(void) {
-    address_t pc, target;
-    word_t instr;
-    int taken = 0, delayed = 0, issue = 0;
+    int issued = 0;
 
-    while (issue < ISSUE_WIDTH) {
-        pc = cpu_state.pc;
+    address_t pc;
+
+    while (issued < ISSUE_WIDTH) {
+        word_t instr;
+        int taken = 0, delayed = 0;
+        address_t target = 0;
+
+        pc = cpu_get_pc();
         instr = memory_read(pc);
-        bp_branch_predict(pc, &taken, &delayed, &target);
+
+        if (!is_delay_slot) {
+            bp_branch_predict(pc, &taken, &delayed, &target);
+        }
 
         if (issue_queue_instruction(pc, instr, taken, delayed, target))
-            return;
+            break;
 
-        if (taken)
-            pc = target;
-        else
+        if (is_delay_slot) {
+            is_delay_slot = 0;
+            taken = 1;
+            target = delayed_branch_target;
+        }
+
+        is_delay_slot = 0;
+
+        if (taken) {
+            if (delayed) {
+                pc += sizeof(pc);
+
+                is_delay_slot = 1;
+                delayed_branch_target = target;
+            } else {
+                pc = target;
+            }
+        } else
             pc += sizeof(pc);
 
         cpu_update_pc(pc);
-        issue++;
+        issued++;
     }
 }

@@ -1,10 +1,11 @@
 #include "issue.h"
 
+#include "cpu.h"
 #include "dispatch.h"
 #include "rob.h"
 
 enum {
-    QUEUE_SIZE = 2*ISSUE_WIDTH,
+    QUEUE_SIZE = ISSUE_WIDTH,
 };
 
 static struct fetched {
@@ -32,8 +33,10 @@ wqueue_size = 0;
 int
 issue_queue_instruction(address_t pc, word_t instr, int taken, int delayed, address_t target)
 {
-    if (wqueue_size == QUEUE_SIZE)
+    if (wqueue_size == QUEUE_SIZE) {
+        cpu_stats.sc_issue += 1;
         return 1;
+    }
 
     wqueue[wqueue_tail] = (struct fetched){
         .pc = pc,
@@ -54,10 +57,10 @@ issue_queue_instruction(address_t pc, word_t instr, int taken, int delayed, addr
 static void
 pop_instruction(void)
 {
-    assert(rqueue_size > 0);
+    assert(wqueue_size > 0);
 
-    rqueue_head = (rqueue_head + 1) % QUEUE_SIZE;
-    rqueue_size -= 1;
+    wqueue_head = (wqueue_head + 1) % QUEUE_SIZE;
+    wqueue_size -= 1;
 }
 
 static void copy_front(void) {

@@ -35,7 +35,10 @@ static inline TAG##_t make_##TAG(REPR v) {\
 \
 static inline REPR TAG##_val(TAG##_t v) {\
     return v.val;\
-}
+}\
+static inline int TAG##_eq(TAG##_t a, TAG##_t b) {\
+    return a.val == b.val;\
+}\
 
 #endif
 
@@ -60,5 +63,12 @@ char *strdup(char const *s);
 } while (0)
 
 #define ABORT_WITH_MSG(...) ABORT_MSG_HELPER(__VA_ARGS__, "")
+
+#define REVERSE_BYTES_32(VAL) (0\
+    |((((uint32_t)(VAL) >>  0) & 0xFF) << 24)\
+    |((((uint32_t)(VAL) >>  8) & 0xFF) << 16)\
+    |((((uint32_t)(VAL) >> 16) & 0xFF) <<  8)\
+    |((((uint32_t)(VAL) >> 24) & 0xFF) <<  0)\
+)
 
 uint64_t sign_extend(uint64_t val, uint64_t bits, uint64_t sign_bit);

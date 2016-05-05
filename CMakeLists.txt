@@ -21,20 +21,21 @@ set(CMAKE_C_FLAGS
 
 set(CMAKE_C_FLAGS_DEBUG
         "${CMAKE_C_FLAGS_DEBUG} ${COMMON_C_FLAGS} \
-        -DDEBUG=1 \
+        -UNDEBUG \
+        -DDEBUG \
         -ggdb \
         -fsanitize=address,undefined")
 
 set(CMAKE_C_FLAGS_RELEASE
         "${CMAKE_C_FLAGS_RELEASE} ${COMMON_C_FLAGS} \
         -D_FORTIFY_SOURCE=1 \
+        -UDEBUG \
         -DNDEBUG \
         -Ofast")
 
 set(CMAKE_C_FLAGS_RELWITHDEBINFO
         "${CMAKE_C_FLAGS_RELWITHDEBINFO} ${COMMON_C_FLAGS} \
         -D_FORTIFY_SOURCE=1 \
-        -DNDEBUG \
         -ggdb \
         -Ofast")
 

@@ -4,24 +4,25 @@
 
 #include <stddef.h>
 
-struct cpu_t {
-    struct {
-        uint64_t cycles;
-        uint64_t instructions;
+struct cpu_stats {
+    uint64_t cycles;
+    uint64_t instructions;
 
-        uint64_t cdb_stalls;
-        uint64_t issue_stalls;
-    } stats;
+    uint64_t sc_issue;
+    uint64_t sc_dispatch;
 
-    int halt;
-
-    address_t pc;
+    uint64_t sc_cdb;
+    uint64_t sc_rob;
 };
 
-extern struct cpu_t cpu_state;
+extern struct cpu_stats cpu_stats;
 
-void cpu_clock(void);
-void cpu_dump(int signal);
-int cpu_halt(void);
 void cpu_init(void);
+void cpu_clock(void);
+void cpu_dump(void);
+void cpu_halt(void);
+int cpu_has_halted(void);
+
+address_t cpu_get_pc(void);
 void cpu_update_pc(address_t pc);
+void cpu_branch(address_t pc);

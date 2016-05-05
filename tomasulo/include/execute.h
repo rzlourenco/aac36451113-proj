@@ -1,30 +1,33 @@
 #pragma once
 
+#include "rob.h"
+
 #include "common.h"
 
 struct rs_alu {
     int op, busy;
-    int Qj, Qk;
-    word_t Vj, Vk, A;
+    rob_tag_t Qj, Qk, Ql;
+    word_t Vj, Vk, Vl;
 };
 
 enum {
     EX_ALU_ADD,
+    EX_ALU_ADDC,
+    EX_ALU_RSUB,
+    EX_ALU_RSUBC,
     EX_ALU_CMP,
+    EX_ALU_CMPU,
     EX_ALU_OR,
     EX_ALU_AND,
     EX_ALU_XOR,
+    EX_ALU_ANDN,
     EX_ALU_SHIFT_LEFT,
     EX_ALU_SHIFT_RIGHT,
+    EX_ALU_SEXT,
     EX_ALU_MUL,
     EX_ALU_MULH,
     EX_ALU_MULHU,
     EX_ALU_MULHSU,
-    EX_ALU_ADDC,
-    EX_ALU_RSUB,
-    EX_ALU_RSUBC,
-    EX_ALU_ANDN,
-    EX_ALU_SEXT,
 };
 
 enum {
