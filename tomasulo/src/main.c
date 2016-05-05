@@ -203,12 +203,14 @@ int main(int argc, char **argv) {
             "    ROB: %lu\n"
             "    Issue: %lu\n"
             "    Dispatch: %lu\n"
-            "    Execute: %lu\n",
+            "    Execute: %lu (%lu ALU)\n",
             cpu_stats.sc_cdb,
             cpu_stats.sc_rob,
             cpu_stats.sc_issue,
             cpu_stats.sc_dispatch,
-            0UL);
+            cpu_stats.sc_execute,
+            cpu_stats.sc_execute_alu
+    );
 
     return 0;
 }

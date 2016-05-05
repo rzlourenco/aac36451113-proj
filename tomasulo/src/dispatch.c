@@ -36,7 +36,7 @@ dispatch_queue_instruction(rob_tag_t tag, word_t instr)
     }
 
     wqueue[wqueue_tail].tag = tag;
-    wqueue[wqueue_tail].instr = instr;
+    wqueue[wqueue_tail].instr = REVERSE_BYTES_32(instr);
 
     wqueue_size += 1;
     wqueue_tail += 1;
@@ -121,7 +121,8 @@ static struct taginstr *top(void);
 
 static void pop(void);
 
-static int dispatch_alu(rob_tag_t tag, word_t rawinstr);
+static int dispatch_arithmetic(rob_tag_t tag, word_t rawinstr);
+static int dispatch_logical(rob_tag_t tag, word_t rawinstr);
 
 void
 dispatch_clock(void)
@@ -132,7 +133,9 @@ dispatch_clock(void)
         if (rqueue_size == 0)
             break;
 
-        if (!dispatch_alu(top()->tag, top()->instr))
+        if (!dispatch_arithmetic(top()->tag, top()->instr))
+            pop();
+        if (!dispatch_logical(top()->tag, top()->instr))
             pop();
     }
 
@@ -164,9 +167,9 @@ extend_immediate(word_t immediate, word_t *data)
 }
 
 static int
-dispatch_alu(rob_tag_t tag, word_t rawinstr)
+dispatch_arithmetic(rob_tag_t tag, word_t rawinstr)
 {
-    union mb_instr instr = { .raw = REVERSE_BYTES_32(rawinstr) };
+    union mb_instr instr = { .raw = rawinstr };
     struct rs_alu rs = {0};
 
     rs.busy = 1;
@@ -247,8 +250,109 @@ dispatch_alu(rob_tag_t tag, word_t rawinstr)
             ABORT_WITH_MSG("opcode 0x05 func %03x", instr.func);
     }
 
+    if (execute_alu(rs))
+        return 1;
+
     if (!instr.k && instr.opcode != 0x10 && instr.opcode != 0x18)
         register_write(reg_flag(REGISTER_FLAG_CARRY), tag);
 
     register_write(reg_gpr(instr.rd), tag);
+
+    return 0;
+}
+
+static int
+dispatch_logical(rob_tag_t tag, word_t rawinstr)
+{
+    union mb_instr instr = { .raw = rawinstr };
+    struct rs_alu rs = {0};
+    int write_carry = 0;
+
+    rs.busy = 1;
+    rs.Qj = register_read(reg_gpr(instr.ra), &rs.Vj);
+
+    if (instr.i)
+        rs.Qk = extend_immediate(instr.imm16, &rs.Vk);
+    else
+        rs.Qk = register_read(reg_gpr(instr.rb), &rs.Vk);
+
+    switch (instr.opcode) {
+        case 0x11:
+        case 0x19:
+            rs.Vk = instr.imm5;
+
+            if (instr.s)
+                rs.op = EX_ALU_BSLL;
+            else if (instr.t)
+                rs.op = EX_ALU_BSRA;
+            else
+                rs.op = EX_ALU_BSRL;
+
+            break;
+
+        case 0x20: // OR
+        case 0x28: // ORI
+            rs.op = EX_ALU_OR;
+            break;
+
+        case 0x21: // AND
+        case 0x29: // ANDI
+            rs.op = EX_ALU_AND;
+            break;
+
+        case 0x22: // XOR
+        case 0x2A: // XORI
+            rs.op = EX_ALU_XOR;
+            break;
+
+        case 0x23: // ANDN
+        case 0x2B: // ANDNI
+            rs.op = EX_ALU_ANDN;
+            break;
+
+        case 0x24:
+            switch (instr.func) {
+                case 0x001:
+                    rs.op = EX_ALU_SRA;
+                    write_carry = 1;
+                    break;
+                case 0x021:
+                    rs.Ql = register_read(reg_gpr(REGISTER_FLAG_CARRY), &rs.Vl);
+                    rs.op = EX_ALU_SRC;
+                    write_carry = 1;
+                    break;
+                case 0x041:
+                    rs.op = EX_ALU_SRL;
+                    write_carry = 1;
+                    break;
+                case 0x060:
+                    rs.op = EX_ALU_SEXT;
+                    rs.Qk = ROB_TAG_INVALID;
+                    rs.Vk = 7;
+                    break;
+                case 0x061:
+                    rs.op = EX_ALU_SEXT;
+                    rs.Qk = ROB_TAG_INVALID;
+                    rs.Vk = 15;
+                    break;
+
+                default:
+                    ABORT_WITH_MSG("unknown logical func: %03x", instr.func);
+            }
+
+            break;
+
+        default:
+            return 1;
+    }
+
+    if (execute_alu(rs))
+        return 1;
+
+    if (write_carry)
+        register_write(reg_flag(REGISTER_FLAG_CARRY), tag);
+
+    register_write(reg_gpr(instr.rd), tag);
+
+    return 0;
 }
