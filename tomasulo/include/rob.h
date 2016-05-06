@@ -13,9 +13,10 @@ struct rob_entry {
     int keep_carry;
     int new_carry;
 
-    int br_pred_taken;
     int br_taken;
+    int br_delayed;
 
+    int br_pred_taken;
     word_t br_pred_target;
 
     word_t st_address;
@@ -26,14 +27,10 @@ struct rob_entry {
 extern const rob_tag_t ROB_TAG_INVALID;
 
 enum {
-    ROB_INSTR_NORMAL,
-    ROB_INSTR_STORE,
-    ROB_INSTR_BRANCH,
-};
-
-enum {
-    ROB_BRANCH_NOT_TAKEN,
-    ROB_BRANCH_TAKEN,
+    ROB_INSTR_NORMAL = 0x00,
+    ROB_INSTR_STORE = 0x01,
+    ROB_INSTR_BRANCH = 0x02,
+    ROB_INSTR_COND_BRANCH = 0x04 | ROB_INSTR_BRANCH,
 };
 
 void

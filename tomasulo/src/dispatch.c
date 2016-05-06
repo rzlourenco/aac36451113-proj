@@ -14,6 +14,7 @@ enum {
 
 static struct taginstr {
     rob_tag_t tag;
+    address_t pc;
     word_t instr;
 }
 wqueue[QUEUE_SIZE],
@@ -28,7 +29,7 @@ rqueue_tail = 0,
 rqueue_size = 0;
 
 int
-dispatch_queue_instruction(rob_tag_t tag, word_t instr)
+dispatch_queue_instruction(rob_tag_t tag, address_t pc, word_t instr)
 {
     if (wqueue_size == QUEUE_SIZE) {
         cpu_stats.sc_dispatch += 1;
@@ -36,7 +37,8 @@ dispatch_queue_instruction(rob_tag_t tag, word_t instr)
     }
 
     wqueue[wqueue_tail].tag = tag;
-    wqueue[wqueue_tail].instr = REVERSE_BYTES_32(instr);
+    wqueue[wqueue_tail].pc = pc;
+    wqueue[wqueue_tail].instr = instr;
 
     wqueue_size += 1;
     wqueue_tail += 1;
@@ -48,49 +50,51 @@ dispatch_queue_instruction(rob_tag_t tag, word_t instr)
 
 union mb_instr {
     struct {
-        word_t opcode: 6;
-        word_t rd: 5;
-        word_t ra: 5;
-        word_t rb: 5;
         word_t func: 11;
+        word_t rb: 5;
+        word_t ra: 5;
+        word_t rd: 5;
+        word_t opcode: 6;
     };
     struct {
-        // opcode
-        word_t _0: 2;
-        word_t i: 1;
-        word_t k: 1;
-        word_t c: 1;
-        word_t _1: 1;
-
-        // rd
-        word_t dc: 1;
-        word_t _2: 4;
-
-        // ra
-        word_t da: 1;
-        word_t a: 1;
-        word_t l: 1;
-        word_t _3: 2;
+        // func
+        word_t: 1;
+        word_t u: 1;
+        word_t: 7;
+        word_t t: 1;
+        word_t s: 1;
 
         // rb
-        word_t _4: 5;
+        word_t: 5;
 
-        // func
-        word_t s: 1;
-        word_t t: 1;
-        word_t _5: 7;
-        word_t u: 1;
-        word_t _6: 1;
+        // ra
+        word_t: 2;
+        word_t link: 1;
+        word_t absolute: 1;
+        word_t delayed_absolute: 1;
+
+        // rd
+        word_t: 4;
+        word_t delayed_conditional: 1;
+
+        // opcode
+
+        word_t: 1;
+        word_t use_carry: 1;
+        word_t keep_carry: 1;
+        word_t has_immediate: 1;
+        word_t: 2;
+
     };
     struct {
-        word_t _7: 16;
         word_t imm16: 16;
+        word_t: 16;
     };
     struct {
-        word_t _8: 8;
-        word_t cond: 3;
-        word_t _9: 16;
         word_t imm5: 5;
+        word_t: 16;
+        word_t cond: 3;
+        word_t: 8;
     };
     word_t raw;
 };
@@ -123,6 +127,9 @@ static void pop(void);
 
 static int dispatch_arithmetic(rob_tag_t tag, word_t rawinstr);
 static int dispatch_logical(rob_tag_t tag, word_t rawinstr);
+static int dispatch_memory(rob_tag_t tag, word_t rawinstr);
+static int dispatch_branch(rob_tag_t tag, address_t pc, word_t rawinstr);
+static int dispatch_other(rob_tag_t tag, word_t rawinstr);
 
 void
 dispatch_clock(void)
@@ -135,8 +142,16 @@ dispatch_clock(void)
 
         if (!dispatch_arithmetic(top()->tag, top()->instr))
             pop();
-        if (!dispatch_logical(top()->tag, top()->instr))
+        else if (!dispatch_logical(top()->tag, top()->instr))
             pop();
+        else if (!dispatch_memory(top()->tag, top()->instr))
+            pop();
+        else if (!dispatch_branch(top()->tag, top()->pc, top()->instr))
+            pop();
+        else if (!dispatch_other(top()->tag, top()->instr))
+            pop();
+        else
+            ABORT_WITH_MSG("illegal instruction %08x", top()->instr);
     }
 
     copy_back();
@@ -173,14 +188,15 @@ dispatch_arithmetic(rob_tag_t tag, word_t rawinstr)
     struct rs_alu rs = {0};
 
     rs.busy = 1;
+    rs.Qi = tag;
     rs.Qj = register_read(reg_gpr(instr.ra), &rs.Vj);
 
-    if (instr.i)
+    if (instr.has_immediate)
         rs.Qk = extend_immediate(instr.imm16, &rs.Vk);
     else
         rs.Qk = register_read(reg_gpr(instr.rb), &rs.Vk);
 
-    if (instr.c)
+    if (instr.use_carry)
         rs.Ql = register_read(reg_flag(REGISTER_FLAG_CARRY), &rs.Vl);
 
     switch (instr.opcode) {
@@ -250,10 +266,10 @@ dispatch_arithmetic(rob_tag_t tag, word_t rawinstr)
             ABORT_WITH_MSG("opcode 0x05 func %03x", instr.func);
     }
 
-    if (execute_alu(rs))
+    if (execute_queue_alu(rs))
         return 1;
 
-    if (!instr.k && instr.opcode != 0x10 && instr.opcode != 0x18)
+    if (!instr.keep_carry && instr.opcode != 0x10 && instr.opcode != 0x18)
         register_write(reg_flag(REGISTER_FLAG_CARRY), tag);
 
     register_write(reg_gpr(instr.rd), tag);
@@ -269,9 +285,10 @@ dispatch_logical(rob_tag_t tag, word_t rawinstr)
     int write_carry = 0;
 
     rs.busy = 1;
+    rs.Qi = tag;
     rs.Qj = register_read(reg_gpr(instr.ra), &rs.Vj);
 
-    if (instr.i)
+    if (instr.has_immediate)
         rs.Qk = extend_immediate(instr.imm16, &rs.Vk);
     else
         rs.Qk = register_read(reg_gpr(instr.rb), &rs.Vk);
@@ -279,7 +296,8 @@ dispatch_logical(rob_tag_t tag, word_t rawinstr)
     switch (instr.opcode) {
         case 0x11:
         case 0x19:
-            rs.Vk = instr.imm5;
+            if (instr.has_immediate)
+                rs.Vk = instr.imm5;
 
             if (instr.s)
                 rs.op = EX_ALU_BSLL;
@@ -311,6 +329,8 @@ dispatch_logical(rob_tag_t tag, word_t rawinstr)
             break;
 
         case 0x24:
+            rs.Qk = ROB_TAG_INVALID;
+
             switch (instr.func) {
                 case 0x001:
                     rs.op = EX_ALU_SRA;
@@ -327,12 +347,10 @@ dispatch_logical(rob_tag_t tag, word_t rawinstr)
                     break;
                 case 0x060:
                     rs.op = EX_ALU_SEXT;
-                    rs.Qk = ROB_TAG_INVALID;
                     rs.Vk = 7;
                     break;
                 case 0x061:
                     rs.op = EX_ALU_SEXT;
-                    rs.Qk = ROB_TAG_INVALID;
                     rs.Vk = 15;
                     break;
 
@@ -346,13 +364,135 @@ dispatch_logical(rob_tag_t tag, word_t rawinstr)
             return 1;
     }
 
-    if (execute_alu(rs))
+    if (execute_queue_alu(rs))
         return 1;
 
     if (write_carry)
         register_write(reg_flag(REGISTER_FLAG_CARRY), tag);
 
     register_write(reg_gpr(instr.rd), tag);
+
+    return 0;
+}
+
+static int
+dispatch_memory(rob_tag_t tag, word_t rawinstr)
+{
+    union mb_instr instr = { .raw = rawinstr };
+
+    switch (instr.opcode) {
+        case 0x30: // LBU
+        case 0x38: // LBUI
+
+        case 0x31: // LHU
+        case 0x39: // LHUI
+
+        case 0x32: // LW
+        case 0x3A: // LWI
+            break;
+
+        case 0x34: // SB
+        case 0x3C: // SBI
+
+        case 0x35: // SH
+        case 0x3D: // SHI
+
+        case 0x36: // SW
+        case 0x3E: // SWI
+            break;
+
+        default:
+            return 1;
+    }
+
+
+    return 0;
+}
+
+static int
+dispatch_branch(rob_tag_t tag, address_t pc, word_t rawinstr)
+{
+    union mb_instr instr = { .raw = rawinstr };
+    struct rs_alu rs = { 0 };
+
+    rs.busy = 1;
+    rs.Qi = tag;
+
+    if (instr.has_immediate)
+        rs.Qk = extend_immediate(instr.imm16, &rs.Vk);
+    else
+        rs.Qk = register_read(reg_gpr(instr.rb), &rs.Vk);
+
+    switch (instr.opcode) {
+        case 0x26: // BR,  BRL,  BRA,  BRAL,  BRD,  BRLD,  BRAD,  BRALD
+        case 0x2E: // BRI, BRLI, BRAI, BRALI, BRID, BRLID, BRAID, BRALID
+            rob_get_entry(tag)->type = ROB_INSTR_BRANCH;
+            rob_get_entry(tag)->br_taken = 1;
+            rob_get_entry(tag)->br_delayed = instr.delayed_absolute;
+
+            rs.Qj = ROB_TAG_INVALID;
+
+            if (instr.absolute)
+                rs.Vj = 0;
+            else
+                rs.Vj = pc;
+
+            rs.op = EX_ALU_ADD;
+            break;
+
+        case 0x27: // BEQ,  BNE,  BLT,  BLE,  BGT,  BGE,  BEQD,  BNED,  BLTD,  BLED,  BGTD,  BGED
+        case 0x2F: // BEQI, BNEI, BLTI, BLEI, BGTI, BGEI, BEQID, BNEID, BLTID, BLEID, BGTID, BGEID
+            rob_get_entry(tag)->type = ROB_INSTR_COND_BRANCH;
+            rob_get_entry(tag)->br_delayed = instr.delayed_conditional;
+
+            rs.Qj = register_read(reg_gpr(instr.ra), &rs.Vj);
+
+            switch (instr.cond) {
+                case 0:
+                    rs.op = EX_ALU_EQ;
+                    break;
+                case 1:
+                    rs.op = EX_ALU_NE;
+                    break;
+                case 2:
+                    rs.op = EX_ALU_LT;
+                    break;
+                case 3:
+                    rs.op = EX_ALU_LE;
+                    break;
+                case 4:
+                    rs.op = EX_ALU_GT;
+                    break;
+                case 5:
+                    rs.op = EX_ALU_GE;
+                    break;
+                default:
+                    ABORT_WITH_MSG("invalid conditional branch code");
+            }
+
+            break;
+
+        default:
+            return 1;
+    }
+
+    if (execute_queue_alu(rs))
+        return 1;
+
+    if (instr.link && (instr.opcode == 0x26 || instr.opcode == 0x2E))
+        register_write(reg_gpr(instr.rd), tag);
+
+    return 0;
+}
+
+static int
+dispatch_other(rob_tag_t tag, word_t rawinstr)
+{
+    union mb_instr instr = { .raw = rawinstr };
+    struct rs_alu rs = {0};
+
+    rs.busy = 1;
+    rs.Qi = tag;
 
     return 0;
 }

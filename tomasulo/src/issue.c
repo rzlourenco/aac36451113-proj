@@ -96,7 +96,7 @@ issue_clock(void)
 
         head->in_rob = 1;
 
-        if (dispatch_queue_instruction(head->rob_tag, head->instr))
+        if (dispatch_queue_instruction(head->rob_tag, head->pc, head->instr))
             break;
 
         pop_instruction();

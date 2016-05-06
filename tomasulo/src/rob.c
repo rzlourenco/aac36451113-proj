@@ -58,10 +58,12 @@ rob_get_entry(rob_tag_t tag_)
 
     size_t head = wqueue_head;
     size_t tail = wqueue_tail;
-    size_t index = tag - 1;
+    size_t index = tag;
 
-    if (tail < head)
+    if (tail < head) {
         tail += QUEUE_SIZE;
+        index += QUEUE_SIZE;
+    }
 
     if (index < head || index >= tail)
         return NULL;

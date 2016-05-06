@@ -15,17 +15,21 @@
 \
 typedef REPR TAG##_t;\
 \
-static inline const TAG##_t make_##TAG(REPR v) {\
+static inline TAG##_t make_##TAG(REPR v) {\
     return v;\
 }\
 \
 static inline REPR TAG##_val(TAG##_t v) {\
     return v;\
-}
+}\
+\
+static inline int TAG##_eq(TAG##_t a, TAG##_t b) {\
+    return a == b;\
+}\
 
 #else
 
-#define NEWTYPE(TAG, REPR) \
+#define NEWTYPE(TAG, REPR)\
 \
 typedef struct { REPR val; } TAG##_t;\
 \
@@ -64,11 +68,11 @@ char *strdup(char const *s);
 
 #define ABORT_WITH_MSG(...) ABORT_MSG_HELPER(__VA_ARGS__, "")
 
-#define REVERSE_BYTES_32(VAL) (0\
-    |((((uint32_t)(VAL) >>  0) & 0xFF) << 24)\
-    |((((uint32_t)(VAL) >>  8) & 0xFF) << 16)\
-    |((((uint32_t)(VAL) >> 16) & 0xFF) <<  8)\
-    |((((uint32_t)(VAL) >> 24) & 0xFF) <<  0)\
+#define REVERSE_BYTES_32(VAL) (0U\
+    |((((uint32_t)(VAL) >>  0U) & 0xFFU) << 24U)\
+    |((((uint32_t)(VAL) >>  8U) & 0xFFU) << 16U)\
+    |((((uint32_t)(VAL) >> 16U) & 0xFFU) <<  8U)\
+    |((((uint32_t)(VAL) >> 24U) & 0xFFU) <<  0U)\
 )
 
 uint64_t sign_extend(uint64_t val, uint64_t bits, uint64_t sign_bit);

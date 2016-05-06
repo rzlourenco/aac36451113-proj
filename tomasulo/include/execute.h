@@ -6,6 +6,7 @@
 
 struct rs_alu {
     int op, busy;
+    rob_tag_t Qi;
     rob_tag_t Qj, Qk, Ql;
     word_t Vj, Vk, Vl;
 };
@@ -36,6 +37,12 @@ enum {
     EX_ALU_SRL,
     EX_ALU_SEXT,
 
+    EX_ALU_EQ,
+    EX_ALU_NE,
+    EX_ALU_LT,
+    EX_ALU_LE,
+    EX_ALU_GT,
+    EX_ALU_GE,
 };
 
 enum {
@@ -48,6 +55,6 @@ enum {
     EX_COND_GE,
 };
 
-int execute_alu(struct rs_alu);
+int execute_queue_alu(struct rs_alu);
 
 void execute_clock(void);
