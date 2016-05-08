@@ -68,11 +68,12 @@ void cpu_clock(void) {
     execute_clock();
     commit_clock();
 
-    rob_clock();
     register_clock();
     memory_clock();
     cdb_clock();
     bp_clock();
+
+    rob_clock();
 
     cpu_stats.cycles += 1;
 }
@@ -100,4 +101,5 @@ void cpu_dump(void) {
     issue_dump();
     dispatch_dump();
     execute_dump();
+    commit_dump();
 }

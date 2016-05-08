@@ -14,6 +14,7 @@ struct rob_entry {
 
     int br_taken;
     int br_delayed;
+    word_t br_target;
 
     int br_pred_taken;
     word_t br_pred_target;

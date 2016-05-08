@@ -472,10 +472,13 @@ dispatch_branch(rob_tag_t tag, address_t pc, word_t rawinstr)
             else
                 rs.Vj = pc;
 
+            rs.Ql = ROB_TAG_INVALID;
+            rs.Vl = pc;
+
             if (instr.delayed_absolute)
                 rob_get_entry(tag)->type |= ROB_INSTR_DELAYED;
 
-            rs.op = EX_ALU_ADD;
+            rs.op = EX_ALU_BR;
             break;
 
         case 0x27: // BEQ,  BNE,  BLT,  BLE,  BGT,  BGE,  BEQD,  BNED,  BLTD,  BLED,  BGTD,  BGED
@@ -484,25 +487,26 @@ dispatch_branch(rob_tag_t tag, address_t pc, word_t rawinstr)
             rob_get_entry(tag)->br_delayed = instr.delayed_conditional;
 
             rs.Qj = register_read(reg_gpr(instr.ra), &rs.Vj);
+            rs.Vl = pc;
 
             switch (instr.cond) {
                 case 0:
-                    rs.op = EX_ALU_EQ;
+                    rs.op = EX_ALU_BEQ;
                     break;
                 case 1:
-                    rs.op = EX_ALU_NE;
+                    rs.op = EX_ALU_BNE;
                     break;
                 case 2:
-                    rs.op = EX_ALU_LT;
+                    rs.op = EX_ALU_BLT;
                     break;
                 case 3:
-                    rs.op = EX_ALU_LE;
+                    rs.op = EX_ALU_BLE;
                     break;
                 case 4:
-                    rs.op = EX_ALU_GT;
+                    rs.op = EX_ALU_BGT;
                     break;
                 case 5:
-                    rs.op = EX_ALU_GE;
+                    rs.op = EX_ALU_BGE;
                     break;
                 default:
                     ABORT_WITH_MSG("invalid conditional branch code");
@@ -520,10 +524,8 @@ dispatch_branch(rob_tag_t tag, address_t pc, word_t rawinstr)
     if (execute_queue_alu(rs))
         return 1;
 
-    if (instr.link && (instr.opcode == 0x26 || instr.opcode == 0x2E)) {
-        rob_get_entry(tag)->value = pc;
+    if (instr.link && (instr.opcode == 0x26 || instr.opcode == 0x2E))
         register_write(reg_gpr(instr.rd), tag);
-    }
 
     return 0;
 }

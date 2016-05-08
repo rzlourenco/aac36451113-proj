@@ -57,9 +57,17 @@ struct rob_entry *
 rob_get_entry(rob_tag_t tag_)
 {
     word_t tag = rob_tag_val(tag_);
+    struct rob_entry *q = queue;
 
-    if (rob_tag_eq(tag_, ROB_TAG_INVALID) || tag > QUEUE_SIZE || queue_size == 0)
+    if (rob_tag_eq(tag_, ROB_TAG_INVALID) || tag > QUEUE_SIZE)
         return NULL;
+
+    if (queue_size == 0) {
+        if (tmp_size != 0)
+            q = tmp;
+        else
+            return NULL;
+    }
 
     tag -= 1;
 
@@ -74,7 +82,7 @@ rob_get_entry(rob_tag_t tag_)
     if (index < head || index >= tail)
         return NULL;
 
-    return &queue[tag];
+    return &q[tag];
 }
 
 static void
@@ -104,6 +112,7 @@ rob_clock(void)
         rob_tag_t tag = make_rob_tag(index + 1);
 
         cdb_read(tag, &queue[index].value);
+        queue[i].busy = 0;
     }
 
     while (tmp_size > 0)
@@ -151,19 +160,48 @@ commit_clock(void)
             memory_write(head->st_address, head->value);
 
         if (head->type & ROB_INSTR_BRANCH) {
-            if (head->type & ROB_INSTR_CONDITIONAL)
-                head->br_taken = head->value != 0;
-
             if (head->br_taken)
                 bp_branch_taken(head->pc, head->value, head->br_delayed);
             else
                 bp_branch_not_taken(head->pc, head->value, head->br_delayed);
 
-            // TODO FIXME
-            cpu_branch(head->value);
+            if (head->br_taken != head->br_pred_taken || head->br_target != head->br_pred_target) {
+                if (head->br_delayed) {
+                    queue_size = 2;
+                }
+            }
+
         }
 
         pop_instruction();
         cpu_stats.instructions += 1;
+    }
+}
+
+void
+commit_dump(void)
+{
+    for (size_t ix = 0; ix < tmp_tail; ++ix) {
+        size_t i = tmp_head + ix;
+        fprintf(stderr, "[commit]     T %zu@%zu b:%d t:%d pc:%08x V:%08x\n",
+                i,
+                ix,
+                tmp[i].busy,
+                tmp[i].type,
+                tmp[i].pc,
+                tmp[i].value
+        );
+    }
+
+    for (size_t ix = 0; ix < queue_tail; ++ix) {
+        size_t i = queue_head + ix;
+        fprintf(stderr, "[commit]     Q %zu@%zu b:%d t:%d pc:%08x V:%08x\n",
+                i,
+                ix,
+                queue[i].busy,
+                queue[i].type,
+                queue[i].pc,
+                queue[i].value
+        );
     }
 }

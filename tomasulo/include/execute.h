@@ -37,12 +37,13 @@ enum {
     EX_ALU_SRL,
     EX_ALU_SEXT,
 
-    EX_ALU_EQ,
-    EX_ALU_NE,
-    EX_ALU_LT,
-    EX_ALU_LE,
-    EX_ALU_GT,
-    EX_ALU_GE,
+    EX_ALU_BR,
+    EX_ALU_BEQ,
+    EX_ALU_BNE,
+    EX_ALU_BLT,
+    EX_ALU_BLE,
+    EX_ALU_BGT,
+    EX_ALU_BGE,
 };
 
 enum {

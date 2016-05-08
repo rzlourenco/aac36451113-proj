@@ -1,0 +1,95 @@
+\documentclass[]{IEEEtran}
+\usepackage[utf8]{inputenc}
+\usepackage{listings}
+\usepackage{hyperref}
+\usepackage[portuguese]{babel}
+
+\author{Rodrigo Lourenço, ist176133, group 9}
+\title{Development of a simple RISC processor}
+
+\begin{document}
+
+\maketitle
+
+\section{Introdução}
+
+O objectivo deste segundo laboratório é acelerar o programa de teste do primeiro
+laboratório. Neste relatório descrevo os métodos que utilizei para acelerar o
+programa, bem como uma breve análise aos resultados.
+
+\section{Métodos}
+
+\subsection{Pipelining (mb-5p)}
+
+Isto foi implementado durante a primeira entrega. Esta secção serve apenas para
+mencionar que o IPC (\emph{instructions per cycle}) está incorrecto no relatório
+anterior devido a um \emph{bug} de lógica que por acaso calculava os valores
+correctos. O IPC da implementação com \emph{pipelining} simples é $0.46$, ou
+seja, um \emph{speedup} de $2.3$ em relação a uma implementação multiciclo com
+$5$ etapas.
+
+\subsection{Forwarding (mb-5pf)}
+
+Acontece que ao fazer \emph{pipelining} são expostas dependências entre as
+instruções de tal forma a que os operandos não estão disponíveis aquando da
+etapa \emph{issue}. Há duas maneiras de as resolver: fazendo um \emph{stall}, ou
+seja, parando o \emph{issue} até que os operandos estejam disponíveis, ou
+fazendo \emph{forwarding}, ou seja, ir buscar o valor que é preciso à etapa mais
+à frente no \emph{pipeline}. Implementei \emph{forwarding} do início da etapa
+\emph{memory} para o início da etapa \emph{execute}, que permite poupar 2 ciclos
+em sequências de instruções do tipo:
+
+\begin{verbatim}
+    add r1, r0, r0
+    add r2, r1, r0
+\end{verbatim}
+
+Implementei também um \emph{forwarding} duvidoso do fim da etapa
+\emph{write-back} para o início da etapa \emph{execute}. Este é duvidoso porque
+é possível que aumente bastante o caminho crítico, logo baixando a frequência de
+relógio. Para o simulador é um não problema.
+
+Com \emph{forwarding} consegui um \emph{speedup} de $1.56$ em relação ao
+\emph{pipeline} simples, ou $3.6$ em relação ao multiciclo, resultando num IPC
+de $0.72$.
+
+\subsection{Branch prediction (mb-5pfb)}
+
+Acontece que \emph{forwarding} não resolve outro tipo de \emph{stalls}
+importante: os de controlo. No código de teste há imensos saltos. Os saltos
+retardados não são um grande problema na prática porque o \emph{delay slot}
+``tapa'' o \emph{stall}. Mas não há saltos retardados condicionais, que fazem o
+\emph{issue} parar durante dois ciclos. Para combater isto, adicionei um
+predictor de saltos simples. É apenas uma \emph{branch target buffer} com
+$8192$ entradas utilizando contadores com 3 bits. De todas as combinações
+testadas, incluindo os métodos \emph{Gselect} e \emph{Gshare} discutidos nas
+teóricas, é mais simples e com excelentes resultados, tendo uma taxa de
+predicção de $89.9\%$. Os valores experimentais \href{https://docs.google.com/spreadsheets/d/1Z5oacao_TFt442GxHCD_SurkacND7Wf3-Jv9VGI58fY/edit?usp=sharing}{estão disponíveis online}.
+
+Adicionando este predictor de saltos, o IPC sobre para $0.85$, um \emph{speedup}
+de $1.18$ em relação à implementação com \emph{forwarding}, ou $4.25$ em
+relação à implementação multiciclo, aproximando-se bastante do limite teórico
+de $5$.
+
+\section{Tomasulo (mb-5t)}
+
+A ideia era implementar o algoritmo de Tomasulo, com \emph{2-issue} e instruções
+com latências maiores que um ciclo.
+
+Infelizmente não consegui implementar o Tomasulo a tempo, e foi por isso que
+extendi a minha implementação com \emph{forwarding} e \emph{branch prediction},
+que foram muito mais simples de implementar. O código inacabado encontra-se na
+pasta com o mesmo nome. É minha intenção continuar a desenvolver o código por
+motivos de interesse pessoal.
+
+\section{Conclusão}
+
+É má ideia tentar implementar o Tomasulo de raíz em duas semanas. Atirar bits
+ao problema nem sempre o resolve: de facto, adicionar mais bits às tabelas de
+predicção, em geral, \emph{piorou} a taxa de predicção. Fazer um simulador é
+interessante para estimar a performance de uma implementação em termos do número
+de instruções por ciclo, mas a estimativa é muito incompleta pois não reflecte
+os problemas físicos que implementações em \emph{hardware} enfrentam.
+
+
+\end{document}

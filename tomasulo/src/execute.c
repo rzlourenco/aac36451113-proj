@@ -152,23 +152,40 @@ do_alu_op(void)
             result = alu_sext(op_a, op_b);
             break;
 
-        case EX_ALU_EQ:
-            result = op_a == op_b;
+        case EX_ALU_BR:
+            rob_get_entry(alu_rs[i].Qi)->br_target = op_a + op_b;
+            result = op_c;
             break;
-        case EX_ALU_NE:
-            result = op_a != op_b;
+
+        case EX_ALU_BEQ:
+            rob_get_entry(alu_rs[i].Qi)->br_taken = op_a == 0;
+            rob_get_entry(alu_rs[i].Qi)->br_target = op_b + op_c;
+            result = op_c;
             break;
-        case EX_ALU_LT:
-            result = op_a < op_b;
+        case EX_ALU_BNE:
+            rob_get_entry(alu_rs[i].Qi)->br_taken = op_a != 0;
+            rob_get_entry(alu_rs[i].Qi)->br_target = op_b + op_c;
+            result = op_c;
             break;
-        case EX_ALU_LE:
-            result = op_a <= op_b;
+        case EX_ALU_BLT:
+            rob_get_entry(alu_rs[i].Qi)->br_taken = op_a < 0;
+            rob_get_entry(alu_rs[i].Qi)->br_target = op_b + op_c;
+            result = op_c;
             break;
-        case EX_ALU_GT:
-            result = op_a > op_b;
+        case EX_ALU_BLE:
+            rob_get_entry(alu_rs[i].Qi)->br_taken = op_a <= 0;
+            rob_get_entry(alu_rs[i].Qi)->br_target = op_b + op_c;
+            result = op_c;
             break;
-        case EX_ALU_GE:
-            result = op_a >= op_b;
+        case EX_ALU_BGT:
+            rob_get_entry(alu_rs[i].Qi)->br_taken = op_a > 0;
+            rob_get_entry(alu_rs[i].Qi)->br_target = op_b + op_c;
+            result = op_c;
+            break;
+        case EX_ALU_BGE:
+            rob_get_entry(alu_rs[i].Qi)->br_taken = op_a >= 0;
+            rob_get_entry(alu_rs[i].Qi)->br_target = op_b + op_c;
+            result = op_c;
             break;
 
         default:
@@ -181,7 +198,6 @@ do_alu_op(void)
         if (cdb_write(alu_rs[i].Qi, result))
             break;
 
-        rob_get_entry(alu_rs[i].Qi)->busy = 0;
         rob_get_entry(alu_rs[i].Qi)->new_carry = flags.carry;
         alu_rs[i].busy = 0;
         alu_rs_used -= 1;
