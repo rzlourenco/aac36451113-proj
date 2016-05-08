@@ -19,8 +19,6 @@ static struct {
     word_t target;
 } btb[BTB_SIZE];
 
-static int predict(size_t index);
-
 static word_t get_index(word_t pc);
 static word_t get_tag(word_t pc);
 

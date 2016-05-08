@@ -10,3 +10,4 @@ int
 issue_queue_instruction(address_t pc, word_t instr, int taken, int delayed, address_t target);
 
 void issue_clock(void);
+void issue_dump(void);

@@ -8,22 +8,26 @@ enum {
     ALU_RS_COUNT = ISSUE_WIDTH,
 };
 
-struct rs_alu
-w_rs_alu[ALU_RS_COUNT],
-r_rs_alu[ALU_RS_COUNT];
+static struct rs_alu
+alu_rs_tmp[ALU_RS_COUNT],
+alu_rs[ALU_RS_COUNT];
+
+size_t
+alu_rs_used = 0,
+alu_rs_tmp_used = 0;
 
 int execute_queue_alu(struct rs_alu rs) {
-    for (int i = 0; i < ALU_RS_COUNT; ++i) {
-        if (w_rs_alu[i].busy)
-            continue;
-
-        w_rs_alu[i] = rs;
-        return 0;
+    if (alu_rs_tmp_used + alu_rs_used == ALU_RS_COUNT) {
+        cpu_stats.sc_execute += 1;
+        cpu_stats.sc_execute_alu += 1;
+        return 1;
     }
 
-    cpu_stats.sc_execute += 1;
-    cpu_stats.sc_execute_alu += 1;
-    return 1;
+    assert(alu_rs_tmp[alu_rs_tmp_used].busy == 0);
+    alu_rs_tmp[alu_rs_tmp_used] = rs;
+    alu_rs_tmp_used += 1;
+
+    return 0;
 }
 
 static struct {
@@ -50,30 +54,25 @@ static word_t alu_sr(word_t op_a, word_t op_b, int use_carry, int carry, int is_
 
 static word_t alu_xor(word_t op_a, word_t op_b);
 
-static void
-copy_front(void)
-{
-    for (int i = 0; i < ALU_RS_COUNT; ++i)
-        r_rs_alu[i] = w_rs_alu[i];
-}
 
 static void
 copy_back(void)
 {
     for (int i = 0; i < ALU_RS_COUNT; ++i)
-        w_rs_alu[i] = r_rs_alu[i];
+        alu_rs_tmp[i] = alu_rs[i];
 }
 
 static void
 do_alu_op(void)
 {
-    for (int i = ALU_RS_COUNT-1; i >= 0; ++i) {
-        if (!r_rs_alu[i].busy)
+    for (int i = 0; i < ALU_RS_COUNT; ++i) {
+        if (!alu_rs[i].busy)
             continue;
 
-        if (!rob_tag_eq(r_rs_alu[i].Qj, ROB_TAG_INVALID)
-                || !rob_tag_eq(r_rs_alu[i].Qk, ROB_TAG_INVALID)
-                || !rob_tag_eq(r_rs_alu[i].Ql, ROB_TAG_INVALID))
+        if (0
+                || !rob_tag_eq(alu_rs[i].Qj, ROB_TAG_INVALID)
+                || !rob_tag_eq(alu_rs[i].Qk, ROB_TAG_INVALID)
+                || !rob_tag_eq(alu_rs[i].Ql, ROB_TAG_INVALID))
             continue;
 
         flags.carry = 0;
@@ -81,11 +80,11 @@ do_alu_op(void)
         flags.zero = 0;
 
         word_t result = 0,
-                op_a = r_rs_alu[i].Vj,
-                op_b = r_rs_alu[i].Vk,
-                op_c = r_rs_alu[i].Vl;
+                op_a = alu_rs[i].Vj,
+                op_b = alu_rs[i].Vk,
+                op_c = alu_rs[i].Vl;
 
-        switch (r_rs_alu[i].op) {
+        switch (alu_rs[i].op) {
         case EX_ALU_ADD:
             result = alu_add(op_a, op_b, 0);
             break;
@@ -173,41 +172,67 @@ do_alu_op(void)
             break;
 
         default:
-            ABORT_WITH_MSG("Unknown ALU operation %d", r_rs_alu[i].op);
+            ABORT_WITH_MSG("Unknown ALU operation %d", alu_rs[i].op);
         }
 
         flags.negative = (result & 0x80000000) != 0;
         flags.zero = result == (l_word_t) 0;
 
-        if (cdb_write(r_rs_alu[i].Qi, result))
+        if (cdb_write(alu_rs[i].Qi, result))
             break;
 
-        rob_get_entry(r_rs_alu[i].Qi)->new_carry = flags.carry;
-        r_rs_alu[i].busy = 0;
+        rob_get_entry(alu_rs[i].Qi)->busy = 0;
+        rob_get_entry(alu_rs[i].Qi)->new_carry = flags.carry;
+        alu_rs[i].busy = 0;
+        alu_rs_used -= 1;
         break;
     }
 }
 
-void execute_clock(void) {
-    copy_front();
+static void handle_alu(void);
 
+void
+execute_clock(void)
+{
+    handle_alu();
+}
+
+static void
+handle_alu(void)
+{
     // Get stuff from the CDB
     for (int i = 0; i < ALU_RS_COUNT; ++i) {
-        if (r_rs_alu[i].busy) {
-            if (!cdb_read(r_rs_alu[i].Qj, &r_rs_alu[i].Vj))
-                r_rs_alu[i].Qj = ROB_TAG_INVALID;
+        if (alu_rs[i].busy) {
+            if (!cdb_read(alu_rs[i].Qj, &alu_rs[i].Vj))
+                alu_rs[i].Qj = ROB_TAG_INVALID;
 
-            if (!cdb_read(r_rs_alu[i].Qk, &r_rs_alu[i].Vk))
-                r_rs_alu[i].Qk = ROB_TAG_INVALID;
+            if (!cdb_read(alu_rs[i].Qk, &alu_rs[i].Vk))
+                alu_rs[i].Qk = ROB_TAG_INVALID;
 
-            if (!cdb_read(r_rs_alu[i].Ql, &r_rs_alu[i].Vl))
-                r_rs_alu[i].Ql = ROB_TAG_INVALID;
+            if (!cdb_read(alu_rs[i].Ql, &alu_rs[i].Vl))
+                alu_rs[i].Ql = ROB_TAG_INVALID;
         }
     }
 
     do_alu_op();
 
-    copy_back();
+    for (size_t i = 0; i < alu_rs_tmp_used; ++i) {
+        int found = 0;
+        size_t ix;
+        for (ix = 0; ix < ALU_RS_COUNT; ++ix) {
+            if (alu_rs[ix].busy == 0) {
+                found = 1;
+                break;
+            }
+        }
+
+        assert(found != 0);
+        alu_rs[ix] = alu_rs_tmp[i];
+        alu_rs_tmp[i] = (struct rs_alu){0};
+        alu_rs_used += 1;
+    }
+
+    alu_rs_tmp_used = 0;
 }
 
 
@@ -316,4 +341,23 @@ static word_t alu_xor(word_t op_a, word_t op_b) {
     word_t result = op_a ^ op_b;
 
     return result;
+}
+
+void
+execute_dump(void)
+{
+    for (size_t i = 0; i < ALU_RS_COUNT; ++i) {
+        fprintf(stderr, "[execute] alu(%d) op:%d Qi:%u Qj:%u Qk:%u Ql:%u Vj:%08x Vk:%08x Vl:%08x\n",
+                alu_rs[i].busy,
+                alu_rs[i].op,
+                rob_tag_val(alu_rs[i].Qi),
+                rob_tag_val(alu_rs[i].Qj),
+                rob_tag_val(alu_rs[i].Qk),
+                rob_tag_val(alu_rs[i].Ql),
+                alu_rs[i].Vj,
+                alu_rs[i].Vk,
+                alu_rs[i].Vl
+        );
+    }
+
 }

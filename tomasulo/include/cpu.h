@@ -12,6 +12,9 @@ struct cpu_stats {
     uint64_t sc_dispatch;
     uint64_t sc_execute;
     uint64_t sc_execute_alu;
+    uint64_t sc_commit;
+    uint64_t sc_commit_empty;
+    uint64_t sc_commit_stall;
 
     uint64_t sc_cdb;
     uint64_t sc_rob;

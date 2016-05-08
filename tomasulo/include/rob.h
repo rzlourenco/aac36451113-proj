@@ -2,15 +2,14 @@
 
 #include "common.h"
 
-NEWTYPE(rob_tag, word_t)
-
 struct rob_entry {
     address_t pc;
 
     int type;
     int busy;
     int speculated;
-    int keep_carry;
+
+    int write_carry;
     int new_carry;
 
     int br_taken;
@@ -21,6 +20,8 @@ struct rob_entry {
 
     word_t st_address;
 
+    int write_register;
+    reg_t dest_register;
     word_t value;
 };
 
@@ -30,7 +31,8 @@ enum {
     ROB_INSTR_NORMAL = 0x00,
     ROB_INSTR_STORE = 0x01,
     ROB_INSTR_BRANCH = 0x02,
-    ROB_INSTR_COND_BRANCH = 0x04 | ROB_INSTR_BRANCH,
+    ROB_INSTR_CONDITIONAL = 0x04,
+    ROB_INSTR_DELAYED = 0x08,
 };
 
 void

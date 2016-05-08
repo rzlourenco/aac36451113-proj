@@ -58,3 +58,4 @@ enum {
 int execute_queue_alu(struct rs_alu);
 
 void execute_clock(void);
+void execute_dump(void);

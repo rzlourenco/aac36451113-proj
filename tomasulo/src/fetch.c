@@ -14,14 +14,13 @@ static address_t delayed_branch_target = 0;
 void fetch_clock(void) {
     int issued = 0;
 
-    address_t pc;
+    address_t pc = cpu_get_pc();
 
     while (issued < ISSUE_WIDTH) {
         word_t instr;
         int taken = 0, delayed = 0;
         address_t target = 0;
 
-        pc = cpu_get_pc();
         instr = memory_read(pc);
 
         if (!is_delay_slot) {
@@ -54,4 +53,10 @@ void fetch_clock(void) {
         cpu_update_pc(pc);
         issued++;
     }
+}
+
+void
+fetch_dump(void)
+{
+    fprintf(stderr, "[fetch] delay:%d target:%08x\n", is_delay_slot, delayed_branch_target);
 }

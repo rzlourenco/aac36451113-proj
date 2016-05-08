@@ -1,10 +1,6 @@
 #pragma once
 
-#include "rob.h"
-
 #include "common.h"
-
-NEWTYPE(reg, word_t)
 
 rob_tag_t register_read(reg_t reg, word_t *data);
 

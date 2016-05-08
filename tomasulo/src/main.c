@@ -167,7 +167,7 @@ int main(int argc, char **argv) {
     }
 
     struct sigaction action = { .sa_handler = sig_handler, .sa_flags = 0 };
-    if (sigaction(SIGINT, &action, NULL) < 0) {
+    if (sigaction(SIGINT, &action, NULL) < 0 || sigaction(SIGSEGV, &action, NULL) < 0) {
         perror("sigaction");
         exit(2);
     }
@@ -203,13 +203,17 @@ int main(int argc, char **argv) {
             "    ROB: %lu\n"
             "    Issue: %lu\n"
             "    Dispatch: %lu\n"
-            "    Execute: %lu (%lu ALU)\n",
+            "    Execute: %lu (%lu ALU)\n"
+            "    Commit: %lu (%lu empty %lu stall)\n",
             cpu_stats.sc_cdb,
             cpu_stats.sc_rob,
             cpu_stats.sc_issue,
             cpu_stats.sc_dispatch,
             cpu_stats.sc_execute,
-            cpu_stats.sc_execute_alu
+            cpu_stats.sc_execute_alu,
+            cpu_stats.sc_commit,
+            cpu_stats.sc_commit_empty,
+            cpu_stats.sc_commit_stall
     );
 
     return 0;

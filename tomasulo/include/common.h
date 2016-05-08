@@ -21,6 +21,9 @@ typedef word_t address_t;
 #define WORD_MAX INT32_MAX
 #define WORD_MIN INT32_MIN
 
+NEWTYPE(reg, word_t)
+NEWTYPE(rob_tag, word_t)
+
 extern int little_endian;
 
 extern int debug;

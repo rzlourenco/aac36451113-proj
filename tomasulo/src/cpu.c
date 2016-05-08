@@ -68,12 +68,11 @@ void cpu_clock(void) {
     execute_clock();
     commit_clock();
 
-    bp_clock();
-    memory_clock();
-    register_clock();
-
     rob_clock();
+    register_clock();
+    memory_clock();
     cdb_clock();
+    bp_clock();
 
     cpu_stats.cycles += 1;
 }
@@ -95,5 +94,10 @@ void cpu_dump(void) {
     if (!debug)
         return;
 
-    fprintf(stderr, "pc:%08x\n", cpu_state.r_pc);
+    fprintf(stderr, "cycle:%lu pc:%08x\n", cpu_stats.cycles, cpu_state.r_pc);
+
+    fetch_dump();
+    issue_dump();
+    dispatch_dump();
+    execute_dump();
 }
